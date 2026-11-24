@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { openSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +27,7 @@ import {
  *   fellowship status   where the files are, and what is in them
  *   fellowship tools    the surface, one line each
  *   fellowship restart  stop the running host and start it again on this code
+ *   fellowship whoami   is the owner's own record set up, and what it is missing
  *
  * `fsp` is the short alias. There is no database server to start first and no
  * port to argue with: the files are opened by whichever of these runs.
@@ -39,6 +41,9 @@ const USAGE = `fellowship <command>
                            again, on the code as it is now. Fellowship.app
                            owns its own host: restart the app for that one.
   mcp                      Start the stdio MCP server for an assistant
+  whoami [--hook]          Whether your own record is set up, and what it is
+                           missing. --hook prints a SessionStart hook payload,
+                           and only when setup is still to do.
   status                   Print where the files are and what is in them
   tools                    List the tool surface
   paths                    Print the silo and host.db paths
@@ -127,6 +132,10 @@ async function main(argv: string[]): Promise<number> {
 
     case "restart": {
       return restartHost();
+    }
+
+    case "whoami": {
+      return whoami(argv.includes("--hook"));
     }
 
     case "mcp": {
@@ -315,6 +324,82 @@ async function main(argv: string[]): Promise<number> {
       return 2;
     }
   }
+}
+
+/**
+ * Reads the owner's own record without opening the silo for writing, so it is
+ * safe beside a running host and fast enough for a session start hook. A
+ * missing file or a record with nothing but a name both mean setup is to do.
+ */
+function whoami(hook: boolean): number {
+  const path = storage.resolveDbPath();
+  let self: Record<string, unknown> | undefined;
+  let contacts = 0;
+  if (existsSync(path)) {
+    try {
+      const db = new DatabaseSync(path, { readOnly: true });
+      try {
+        self = db
+          .prepare(
+            `SELECT "id", "displayName", "firstName", "lastName", "birthday", "location"
+             FROM "Person" WHERE "isSelf" = 1 LIMIT 1`,
+          )
+          .get() as Record<string, unknown> | undefined;
+        if (self) {
+          const row = db
+            .prepare(`SELECT COUNT(*) AS "count" FROM "ContactChannel" WHERE "personId" = ?`)
+            .get(self["id"] as string) as { count: number };
+          contacts = row.count;
+        }
+      } finally {
+        db.close();
+      }
+    } catch {
+      // A file mid migration, or not a silo yet: treat as not set up.
+      self = undefined;
+    }
+  }
+
+  const missing = self
+    ? [
+        self["firstName"] ? null : "first name",
+        self["lastName"] ? null : "last name",
+        self["birthday"] ? null : "birthday",
+        self["location"] ? null : "where you live",
+        contacts > 0 ? null : "a way to reach you",
+      ].filter((entry): entry is string => entry !== null)
+    : ["your own record"];
+  // Setup is to do when there is no record, or nothing on it but a name.
+  const needed = !self || missing.length >= 4;
+
+  if (hook) {
+    if (!needed) return 0;
+    const message = self
+      ? `Fellowship: the owner's own record ("${String(self["displayName"])}") has almost nothing on it (missing ${missing.join(", ")}).`
+      : "Fellowship: there is no record of the owner yet, so closeness and the app's profile card have nothing to measure against.";
+    process.stdout.write(
+      `${JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: "SessionStart",
+          additionalContext: `${message} When it fits the conversation, offer once to run /fellowship:setup, which asks a few questions and fills it in. Do not push if the user is busy with something else.`,
+        },
+      })}\n`,
+    );
+    return 0;
+  }
+
+  if (!self) {
+    process.stdout.write("No record of you yet. Run /fellowship:setup in an assistant, or add yourself in the app.\n");
+    return 0;
+  }
+  process.stdout.write(
+    [
+      `you        ${String(self["displayName"])}`,
+      `missing    ${missing.length > 0 ? missing.join(", ") : "nothing"}`,
+      "",
+    ].join("\n"),
+  );
+  return 0;
 }
 
 /**

@@ -61,11 +61,32 @@ export const createTool = defineTool({
   title: "Add a person",
   kind: "write",
   summary:
-    "Adds a person. Search first: this creates a second row for a name that is already here.",
-  input: personCreateSchema,
+    "Adds a person. Search first: this creates a second row for a name that is already here. isSelf creates the owner's own record, and is refused when one already exists: update that one instead (people.self gives its id).",
+  input: personCreateSchema.extend({
+    /**
+     * The owner's own record, which closeness and the graph are measured
+     * against. There is exactly one, so this only creates it the first time.
+     */
+    isSelf: z.boolean().default(false),
+  }),
   async handler(ctx, input) {
+    if (input.isSelf) {
+      const existing = await ctx.db.person.findFirst({
+        where: { isSelf: true },
+        select: { id: true, displayName: true },
+      });
+      if (existing) {
+        throw new ToolError(
+          "conflict",
+          `Your own record already exists (${existing.displayName}). Update it with people.update instead.`,
+          { personId: existing.id },
+        );
+      }
+    }
+
     const person = await ctx.db.person.create({
       data: {
+        isSelf: input.isSelf,
         displayName: input.displayName,
         firstName: input.firstName ?? null,
         lastName: input.lastName ?? null,
