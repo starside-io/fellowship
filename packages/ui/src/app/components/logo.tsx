@@ -1,6 +1,6 @@
 /**
  * The Fellowship mark: a flame with people seated around it. Drawn from
- * docs/brand/option-2-hearth-mark.svg, which is the source of truth; the colours
+ * docs/brand/hearth-mark.svg, which is the source of truth; the colours
  * are the brand four, fixed, so the mark reads the same in both themes.
  */
 export function HearthMark({ className }: { className?: string }) {
