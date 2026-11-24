@@ -7,6 +7,7 @@ import { hrefOf, useLinkHandler, type Route } from "@/lib/router";
 import { useRpc } from "@/lib/use-rpc";
 import { Badge } from "@/ui/badge";
 import { ThemeToggle } from "@/app/theme";
+import { HearthMark } from "@/app/components/logo";
 import { useEffect, useState } from "react";
 
 /**
@@ -63,7 +64,7 @@ export function Rail({ current, onSearch }: { current: Route; onSearch: () => vo
         onClick={onLink}
         className="flex items-center gap-2 px-4 py-4 text-sidebar-foreground"
       >
-        <span className="bg-thread size-2.5 rounded-full" aria-hidden />
+        <HearthMark className="size-7 shrink-0" />
         <span className="font-heading text-base font-semibold tracking-tight">Fellowship</span>
       </a>
 

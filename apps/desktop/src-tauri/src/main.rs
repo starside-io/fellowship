@@ -32,6 +32,10 @@ const PREFERRED_PORT: u16 = 4319;
 /// How long the host gets to migrate, open the silo and bind.
 const STARTUP_BUDGET: Duration = Duration::from_secs(45);
 
+/// The least time the splash stays up, so a host that is already running does
+/// not turn it into a flash.
+const MIN_SPLASH: Duration = Duration::from_millis(1400);
+
 /// The fingerprint of the host this app bundles, from scripts/bundle.mjs.
 const FINGERPRINT: Option<&str> = option_env!("FELLOWSHIP_FINGERPRINT");
 
@@ -171,11 +175,13 @@ fn main() {
                 .min_inner_size(900.0, 600.0)
                 .build()?;
 
+            let shown = Instant::now();
             thread::spawn(move || {
                 let deadline = Instant::now() + STARTUP_BUDGET;
                 while Instant::now() < deadline {
                     if is_fellowship(port) {
                         if let Ok(url) = Url::parse(&format!("http://127.0.0.1:{port}/")) {
+                            thread::sleep(MIN_SPLASH.saturating_sub(shown.elapsed()));
                             let _ = window.navigate(url);
                         }
                         return;

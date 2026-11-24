@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80" role="img" aria-label="Fellowship">
+  <title>Fellowship</title>
+  <style>text { fill: #2a2b2e; } @media (prefers-color-scheme: dark) { text { fill: #f5ede3; } }</style>
+  <g transform="translate(8 8)"><g fill="none" stroke-width="5.5"><circle cx="32" cy="21.5" r="12.5" stroke="#b3162f"/><circle cx="22" cy="38.5" r="12.5" stroke="#dc7465"/><circle cx="42" cy="38.5" r="12.5" stroke="#c8955a"/><path d="M 23.26 30.43 A 12.5 12.5 0 0 1 19.51 20.98" stroke="#b3162f"/><path d="M 44.49 20.98 A 12.5 12.5 0 0 1 40.74 30.43" stroke="#b3162f"/><path d="M 34.19 41.28 A 12.5 12.5 0 0 1 28.08 49.42" stroke="#dc7465"/></g></g>
+  <text x="84" y="51" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="650" letter-spacing="-0.5">Fellowship</text>
+</svg>

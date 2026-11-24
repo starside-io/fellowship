@@ -3,33 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <title>Fellowship</title>
+    <!--
+      The splash: what the window shows while the host starts, and for a moment
+      at least even when one is already up (see main.rs). Self contained: no
+      fonts, no scripts, nothing fetched.
+    -->
     <style>
-      :root { color-scheme: light dark; }
-      body {
-        margin: 0;
-        height: 100vh;
-        display: grid;
-        place-items: center;
-        font-family: ui-sans-serif, system-ui, sans-serif;
-        background: #f6efe6;
-        color: #2a2b2e;
+      :root {
+        color-scheme: light dark;
+        --page: #f6efe6;
+        --ink: #2a2b2e;
+        --muted: #8a7f73;
       }
       @media (prefers-color-scheme: dark) {
-        body { background: #232427; color: #f5ede3; }
+        :root { --page: #232427; --ink: #f5ede3; --muted: #a89d90; }
       }
-      .mark {
-        width: 12px;
-        height: 12px;
-        border-radius: 999px;
-        background: #b3162f;
-        display: inline-block;
-        margin-right: 8px;
-        animation: pulse 1.2s ease-in-out infinite;
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: grid;
+        place-items: center;
+        background: var(--page);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+        cursor: default;
       }
-      @keyframes pulse { 50% { opacity: 0.35; } }
+      .splash {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        animation: rise 600ms cubic-bezier(.2, .7, .2, 1) both;
+      }
+      .mark { width: 184px; height: 184px; }
+      .flame {
+        transform-box: fill-box;
+        transform-origin: 50% 100%;
+        animation: flicker 2.4s ease-in-out infinite;
+      }
+      .name { font-size: 38px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
+      .by { font-size: 15px; color: var(--muted); margin: -12px 0 0; letter-spacing: 0.01em; }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes flicker {
+        0%, 100% { transform: scale(1, 1); }
+        30% { transform: scale(0.985, 1.03); }
+        60% { transform: scale(1.01, 0.985); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash, .flame { animation: none; }
+      }
     </style>
   </head>
   <body>
-    <p><span class="mark"></span>Opening the fellowship</p>
+    <main class="splash" aria-label="Fellowship by starside.io, starting">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><g class="flame"><g transform="translate(32 27.5) scale(0.72) translate(-32 -32)"><path d="M 32 5 C 41 15, 50 24, 49.5 37.5 C 49 50, 41 58.5, 32 58.5 C 22.5 58.5, 14.5 50.5, 14.5 40 C 14.5 31, 19.5 24.5, 25.5 19 C 25 26, 27 30.5, 31 31.5 C 33.5 23.5, 34 14, 32 5 Z" fill="#b3162f"/>
+<path d="M 33.5 24.5 C 40 31.5, 43.5 37.5, 42.5 45 C 41.5 52, 37 55.5, 32 55.5 C 26.5 55.5, 21.5 51.5, 21.5 45.5 C 21.5 40, 24.5 36.5, 28 33.5 C 28 37.5, 30 40.5, 33 40.5 C 35.5 36.5, 35.5 30.5, 33.5 24.5 Z" fill="#dc7465"/>
+<path d="M 32 39.5 C 35.5 43, 37.5 46.5, 36.5 49.5 C 35.5 52.5, 33.8 53.5, 32 53.5 C 29.8 53.5, 27.5 52, 27.5 49 C 27.5 45.5, 29.8 42.5, 32 39.5 Z" fill="#ecc59a"/></g></g><circle cx="8.33" cy="39.34" r="3.6" fill="#c8955a"/><circle cx="17.09" cy="52.44" r="3.6" fill="#dc7465"/><circle cx="32.00" cy="57.50" r="3.6" fill="#b3162f"/><circle cx="46.91" cy="52.44" r="3.6" fill="#dc7465"/><circle cx="55.67" cy="39.34" r="3.6" fill="#c8955a"/></svg>
+      <p class="name">Fellowship</p>
+      <p class="by">by starside.io</p>
+    </main>
   </body>
 </html>

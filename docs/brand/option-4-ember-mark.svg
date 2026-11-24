@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Fellowship"><defs><mask id="ember-f" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+<rect width="64" height="64" fill="#fff"/>
+<path d="M 27 51.5 L 27 28.5 L 38.5 28.5 M 27 39.5 L 35.5 39.5" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</mask></defs>
+<g mask="url(#ember-f)">
+<path d="M 32 5 C 41 15, 50 24, 49.5 37.5 C 49 50, 41 58.5, 32 58.5 C 22.5 58.5, 14.5 50.5, 14.5 40 C 14.5 31, 19.5 24.5, 25.5 19 C 25 26, 27 30.5, 31 31.5 C 33.5 23.5, 34 14, 32 5 Z" fill="#b3162f"/>
+</g>
+</svg>

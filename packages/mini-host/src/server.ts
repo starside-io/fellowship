@@ -349,6 +349,7 @@ function uiRoutes(app: Hono, dir: string): void {
   );
 
   app.use("/favicon.ico", serveStatic({ root: dir }));
+  app.use("/favicon.svg", serveStatic({ root: dir }));
 
   app.get("*", (context) => {
     const accept = context.req.header("accept") ?? "";
