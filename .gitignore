@@ -32,3 +32,6 @@ adapters/**/*.bin
 # A plugin install building itself: see scripts/plugin-bootstrap.mjs.
 .plugin-build.lock/
 .plugin-build.log
+
+# The npm package as assembled by scripts/pack-npm.mjs.
+.npm-package/

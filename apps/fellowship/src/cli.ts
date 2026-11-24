@@ -60,14 +60,16 @@ const USAGE = `fellowship <command>
 `;
 
 /**
- * The built UI, which sits in the workspace beside this binary. An env var
- * overrides it, and a missing build is not fatal: the tools are reachable over
- * /rpc and over MCP either way.
+ * The built UI: beside this binary in the npm package (ui/), or in the
+ * workspace when run from a checkout. An env var overrides both, and a missing
+ * build is not fatal: the tools are reachable over /rpc and over MCP either way.
  */
 function uiDir(): string {
   const override = process.env["FELLOWSHIP_UI_DIR"]?.trim();
   if (override) return override;
   const here = dirname(fileURLToPath(import.meta.url));
+  const packaged = resolve(here, "..", "ui");
+  if (existsSync(join(packaged, "index.html"))) return packaged;
   return resolve(here, "..", "..", "..", "packages", "ui", "dist");
 }
 
