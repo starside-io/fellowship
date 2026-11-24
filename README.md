@@ -1,205 +1,201 @@
+<p align="center">
+  <img src="docs/logo.svg" alt="Fellowship" width="520" />
+</p>
+
 # Fellowship
 
-A local-first tracker of the people in your life: who they are, what they like,
-what to avoid, the occasions you shared, and the derived strength of every
-connection.
+[![GitHub](https://img.shields.io/badge/GitHub-starside--io%2Ffellowship-181717?logo=github)](https://github.com/starside-io/fellowship)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/starside-io/fellowship)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Node](https://img.shields.io/badge/node-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![SQLite](https://img.shields.io/badge/powered%20by-SQLite-003B57?logo=sqlite)](https://sqlite.org)
+[![MCP](https://img.shields.io/badge/works%20with-MCP-000000)](https://modelcontextprotocol.io)
 
-One user. No auth. No network. One SQLite file on your machine.
+**The people in your life, on your own machine.**
 
-A company of people bound together by a shared road, which is the thing this
-tracks. Successor to akai-ito, the red thread of fate, rebuilt as a module that
-runs standalone or inside an assistant host.
+Built by [starside.io](https://starside.io). A local-first record of the people
+you care about: who they are, what they like, what to steer clear of, the
+moments you shared, and how close you really are.
 
-**Status: M9 of M9.** The silo, the domain, the 38 tools, the standalone host
-and the UI are built. Daily use needs no SQL and no assistant, and an assistant
-can drive the same tools through the bundled MCP server.
+---
 
-It is model agnostic. The library never calls a model: whatever model is
-driving, behind whatever assistant, reads the material through
-`people.draft_context`, reasons, and proposes back through
-`people.propose_draft`, and every draft waits in Review for a person to
-confirm. A local model can do the same for the standalone app when no
-assistant is attached, and is entirely optional. The full build spec is
-[`docs/SPEC.md`](docs/SPEC.md), and the design system is
-[`docs/DESIGN.md`](docs/DESIGN.md).
+### Why *Fellowship*?
 
-| Milestone | |
+A fellowship is a company of people bound together by a shared road. You
+already know who matters to you; what slips is the detail. The friend who is
+allergic to shellfish, the birthday that is next week, the person you have not
+seen since spring, the way someone likes to be asked out (with a plan, never a
+maybe).
+
+Fellowship keeps that detail in one SQLite file on your machine. Nothing is sent
+anywhere. It works on its own as a desktop app, and any AI assistant can read
+and draft into the same records through MCP, with every draft waiting for your
+yes before it is written.
+
+## Features
+
+| | |
 | --- | --- |
-| M0 workspace, schema, pragmas, migrations | done |
-| M1 the domain, 324 reference tests ported | done |
-| M2 the 32 tools over the ports, gates green | done |
-| M3 the mini-host: ports, `/rpc`, media, stdio MCP | done |
-| M4 import a real akai-ito snapshot, round trip it, diff | done |
-| M5 the standalone UI: dashboard, person, occasions, review, settings | done |
-| M6 graph and connector in their own packages | done |
-| M7 FTS5 search, replacing contains | done |
-| M8 drafting with any model: senders, facts, sketches, all through review | done |
-| M9 Tauri packaging: double clickable | done |
+| **People** | Names, birthdays (with or without the year), where they live, how you met, contacts and socials, circles, custom fields, Myers-Briggs type. |
+| **Likes and dislikes** | Interests, dislikes and allergies per person, searchable. Allergies always sit at the top of the page, because getting dinner wrong can hurt someone. |
+| **Occasions** | A timeline of what you did together: meals, trips, calls, parties, favours, conflicts. One occasion holds everyone who was there. Filter by person, kind or how it went. |
+| **Closeness** | A score per connection, derived from the occasions you logged and decaying over time, with the count behind every figure. A force graph shows not just your links but the links between your people. |
+| **Home** | Birthdays and "years since you met" coming up, occasions and messages per month, what you did most, who you saw most, circle sizes. |
+| **Chat import** | Bring in a WhatsApp export. Reply speed, who starts conversations, message volume, and the raw material for everything below. |
+| **Drafts from any AI** | An assistant recaps a chat into occasions and preferences, pulls facts out of pasted text, sketches how someone is and how to spend time with them well. Every draft lands in Review. |
+| **Personality radar** | Eight behavioural axes scored from the chats, with the evidence for each score. Compare up to three people side by side and see who is most alike. |
+| **Pictures** | Profile pictures from the handles a person already has (LinkedIn, TikTok, YouTube, GitHub, Gravatar), stored locally so viewing someone pings nobody. |
+| **Contact cards** | Export one person or everyone as a vCard file your phone imports: names, birthday, numbers, socials, photo. |
+| **Search** | One search box over people, notes, occasions and messages, forgiving of accents and case. |
+| **Backups** | Export and import the whole record as a snapshot, verified round trip before it touches the real file. |
 
-## Running it
+## Use cases
+
+| You want to | Fellowship gives you |
+| --- | --- |
+| Pick a restaurant for a group | Every allergy and dislike for the people coming, in one place |
+| Remember a birthday before it happens | The Home page, two months ahead, and a vCard for your phone |
+| Reconnect with people you have drifted from | Who you have not seen in 30 days, and when you last did |
+| Prepare to see someone | Their sketch, what lands, what to avoid, a good opener, the last few occasions |
+| Turn a long chat into a record | An assistant recaps it into occasions and preferences, you confirm what is true |
+| Understand a relationship over time | Sentiment per occasion, the trend, and a closeness score with its sample size |
+
+> **Privacy:** Fellowship listens on 127.0.0.1 only and makes no network calls
+> of its own. The one exception is fetching a profile picture you asked for,
+> from an address the host checks first. It never calls an AI model: an
+> assistant you choose does the reasoning, and nothing it drafts is written
+> until you confirm it. Your records are personal data about other people;
+> keep the file somewhere you trust.
+
+## Use it from an AI assistant
+
+Fellowship ships as a Claude Code plugin with a bundled MCP server, and the
+same tools work over MCP from any assistant and any model.
+
+Fellowship is in the [starside plugin marketplace](https://github.com/starside-io/claude-plugins):
 
 ```bash
-pnpm install
-pnpm build
-pnpm start serve        # http://localhost:4319, or FELLOWSHIP_PORT
+/plugin marketplace add starside-io/claude-plugins
 ```
 
-That one process is the whole app: the SQLite file, the tools, the HTTP
-surface and the UI. It listens on 127.0.0.1 only: there is no auth in a single
-user app, so an interface it listens on is an interface your records are
-readable from. `FELLOWSHIP_HOST` widens it, deliberately. `pnpm dev` runs the
-UI from Vite instead, on 4320, proxying to a host you started separately.
+```bash
+/plugin install fellowship@starside
+```
 
-### As a desktop app
+The first session after installing builds Fellowship in the background, which
+takes a minute or two and needs Node 22 or later. The tools appear once it is
+done; `/mcp` reconnects them without starting a new session.
+
+| Command | Does |
+| --- | --- |
+| `/fellowship:setup` | Set up your own record: name, birthday, where you live, how to reach you |
+| `/fellowship:add <name> [facts]` | Add a person, or add facts to one |
+| `/fellowship:who <name>` | Read someone back: facts, closeness, recent occasions |
+| `/fellowship:personalities [name]` | Score or refresh personality radars from the chats |
+| `/fellowship:open [name]` | Start Fellowship and say where it is |
+
+The assistant gets 42 typed tools: reading and searching people, logging
+occasions, importing chats, and drafting. Three rules hold whatever model is
+driving:
+
+- **Your yes is required.** Drafts go to Review; writing a sketch, a picture or
+  a personality radar needs your explicit confirmation of that exact content.
+- **No invented people.** A draft that names someone who is not in your records
+  is refused.
+- **Observations, not diagnoses.** A sketch or radar that labels someone
+  clinically is refused. Say what they do, with the quote or count behind it.
+
+## Installation
+
+### 1. Prerequisites
+
+```bash
+# Node 22 or later, and pnpm
+corepack enable
+```
+
+For the desktop app you also need Rust and the Tauri CLI:
+
+```bash
+# macOS
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install tauri-cli
+```
+
+### 2. Fellowship
+
+```bash
+git clone https://github.com/starside-io/fellowship.git
+cd fellowship
+pnpm install
+pnpm build
+```
+
+### 3. The desktop app (optional)
 
 ```bash
 pnpm desktop
 ```
 
-Builds `Fellowship.app` under `apps/desktop/src-tauri/target/release/bundle/macos/`.
-It is a Tauri window over the same host `fellowship serve` runs, with Node
-bundled beside it: double click it and it starts the host, opens the window,
-and stops the host on quit. If a host is already answering on 4319 it reuses
-that one instead of starting a second writer on the same file. The host's log
-is `host.log` in the app's log folder.
+This builds `Fellowship.app` under `apps/desktop/src-tauri/target/release/bundle/macos/`.
+Move it to Applications and open it like any other app.
 
-`pnpm start status` prints where the two files are and what is in them, and
-`pnpm start tools` lists the surface. Both files are created and migrated on
-first run: there is no database server to start and no schema step to remember.
-
-To check a snapshot before it goes anywhere near the real file:
+## Quick start
 
 ```bash
-pnpm start verify <snapshot.json>
+# Start Fellowship in the browser at http://localhost:4319
+pnpm start serve
+
+# Or open the desktop app you built
+open apps/desktop/src-tauri/target/release/bundle/macos/Fellowship.app
+
+# See where your records live and what is in them
+pnpm start status
 ```
 
-It imports into a throwaway silo, exports back out, and diffs the two row by
-row: what was lost, what was normalized and why, and whether the single self
-invariant and the message attachments held. Then, to read one in or write one
-out:
+Then:
 
-```bash
-pnpm start import <snapshot.json>
-```
+1. **Tell it who you are.** With an assistant, run `/fellowship:setup`. It asks
+   a few questions and fills in the card at the bottom left of the app.
+2. **Add the people who matter.** "Add a person" on the People page, or tell
+   your assistant `/fellowship:add Jane Doe, allergic to peanuts, met at work`.
+3. **Import a chat.** Settings, then "Import a chat export", with the `.txt`
+   WhatsApp gives you from Export Chat (without media).
+4. **Let an assistant draft.** Ask it to recap the chat or score personalities
+   (`/fellowship:personalities`), then confirm what is true in Review.
 
-```bash
-pnpm start export <snapshot.json>
-```
+## Before you rely on it
 
-Merge is the default: the file wins row by row and nothing else is touched.
-`--replace` wipes first, names the row counts it will destroy, and refuses
-without `--yes`. Either way the cached closeness scores are rebuilt from the
-events afterwards, because the ones in a file were computed by whatever wrote
-it, at its own idea of now.
+1. **One person, one machine.** There are no accounts and no sync. Copy the
+   file yourself if you want it elsewhere.
+2. **The desktop app is built and tested on macOS.** The browser version runs
+   wherever Node does.
+3. **Chat import reads WhatsApp exports.** Other apps are not parsed yet.
+4. **Scores are only as good as what you log.** A closeness score from three
+   occasions says so, and a thin sample shows as "not enough data".
+5. **Personality radars are drafts.** They describe how someone comes across in
+   your messages, not who they are.
+6. **Keep backups.** `pnpm start export` writes the whole record to a file.
 
-## What it does
-
-- Structured facts about 50 to 200 people: contacts, interests, allergies,
-  dislikes, custom fields, tags, circles.
-- Notes and a timeline of occasions. One occasion holds many people.
-- A force graph of not just your links to people, but the links between them,
-  with a score per link that moves as occasions are logged and decays over time.
-- Chat export import, so a profile can be written from what someone actually
-  said rather than what you remember.
-- 33 typed tools, so an assistant reads and writes the same data as the UI,
-  through the same validation and the same gates.
-
-## Install as a Claude Code plugin
-
-This repo is both a plugin and a single-plugin marketplace, so it installs from
-a local path:
-
-```bash
-claude plugin marketplace add ~/Personal/fellowship
-```
-
-Then install it:
-
-```bash
-/plugin install fellowship@fellowship
-```
-
-### Adding it to a marketplace file you already maintain
-
-Paste this into that marketplace's `plugins` array and point `source` at
-wherever this repo lives:
-
-```json
-{
-  "name": "fellowship",
-  "description": "Add people, log occasions, read closeness and insights, profile someone from a chat export.",
-  "source": "/path/to/fellowship",
-  "category": "productivity"
-}
-```
-
-`source` takes a local path, or a git URL once this is pushed somewhere.
-
-## What the plugin gives you
-
-| Surface | Does |
-| --- | --- |
-| `/fellowship:add <name> [facts]` | Add a person, or add facts to one |
-| `/fellowship:who <name>` | Read someone back: facts, closeness, recent occasions |
-| `/fellowship:open [name]` | Start the host and report where it is. The UI lands at M5 |
-| `skills/fellowship` | The procedure for the slower work: chat imports, sketches, who was in the room |
-| `.mcp.json` | The bundled stdio MCP server: all 38 tools in any session with the plugin enabled |
-
-The commands are thin on purpose. They collect intent and call tools. They hold
-no domain logic and never touch the database file directly, because anything
-they could do that way an assistant could do without the plugin, unaudited and
-ungated.
-
-## Design rules that are not obvious
-
-- **Link scores are derived, never written by hand.**
-  `contribution = effectiveSentiment * weight * 0.5^(daysSince / 180)`, then
-  `clamp(round(5 * sum), -100, 100)`. Six month half-life, so an argument two
-  years ago barely registers. The result is cached and recomputed on every
-  occasion mutation.
-- **An occasion carries everyone who was there**, not just the people in the
-  chat it came from. Links only exist between people who share an occasion.
-- **Anything an assistant writes lands unconfirmed**, carrying its provenance.
-  Only the user confirms, and only on content they have seen in full.
-- **Thin samples report null, not a number.** Below the threshold, an insight
-  returns `{ value: null, count, sufficient: false }` and the UI says "not
-  enough data".
-- **Sketches describe observable behaviour with a quote or a number behind every
-  claim.** No diagnoses, no attachment styles, no personality typing.
-- **No em-dashes or en-dashes anywhere**: code, comments, UI copy, docs, commit
-  messages.
-
-## Layout
-
-```
-packages/core/         the module: schemas, domain, the 38 tools, the silo schema
-packages/mini-host/    the host: ports, /rpc, the media route, the stdio MCP server
-packages/ui/           the standalone shell and the design system
-packages/graph/        the force directed view, from the people.graph payload alone
-packages/connector-chat-export/   the export parser
-apps/fellowship/       the binary: fellowship serve | mcp | status | tools
-apps/desktop/          the Tauri shell: Fellowship.app
-.claude-plugin/        plugin.json and marketplace.json
-commands/              /fellowship:add, :who, :open
-skills/fellowship/     SKILL.md
-module.json            the host-contract manifest
-config.schema.json     the config the host stores
-docs/SPEC.md           the build spec, M0 to M9
-.mcp.json              the bundled MCP server
-```
-
-## The two files
+## Documentation
 
 | | |
 | --- | --- |
-| Silo | `~/Library/Application Support/fellowship/fellowship.db`, or `FELLOWSHIP_DB_PATH` |
-| Host | `host.db` beside it, or `FELLOWSHIP_HOST_DB_PATH` |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Running every part, the CLI, tests, schema changes, layout, design rules |
+| [`docs/SPEC.md`](docs/SPEC.md) | The full build spec |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | The design system: palette, tokens, primitives |
 
-The silo holds the people. The host file holds the review queue, the audit log,
-the settings and the connector cursors, so a module uninstall or a silo export
-never entangles them. Both are WAL, and all three files of each move together
-or the database is corrupt.
+## Contributing
+
+Contributions are welcome. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) covers
+setting up, running the tests and the conventions a change is held to. Commits
+use [gitmoji](https://gitmoji.dev) with [conventional commits](https://www.conventionalcommits.org),
+for example `✨ feat(ui): compare personalities`. Test data is always invented.
 
 ## License
 
-MIT.
+Apache 2.0. See [LICENSE](LICENSE).
+
+---
+
+Made with ❤ by [starside.io](https://starside.io) · [github.com/starside-io/fellowship](https://github.com/starside-io/fellowship)
