@@ -1,4 +1,4 @@
-import { closeSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 /**
@@ -128,6 +128,9 @@ export function describeThisProcess(fingerprint: string): HostLock {
  * host that died is removed and taken.
  */
 export async function acquireHostLock(path: string, lock: HostLock): Promise<void> {
+  // On a first run the data folder does not exist yet: the lock is taken
+  // before the files are opened, so it has to make the folder itself.
+  mkdirSync(dirname(path), { recursive: true });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const fd = openSync(path, "wx");
