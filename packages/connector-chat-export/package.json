@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The chat export connector: the parser, and the shape it hands rows over in. Pure, and nothing in it reaches a database or a disk.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {

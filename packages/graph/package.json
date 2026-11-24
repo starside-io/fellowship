@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The force directed view. Consumes the people.graph payload and the scoring formula, and nothing else.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

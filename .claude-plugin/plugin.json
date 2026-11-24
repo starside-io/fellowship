@@ -5,7 +5,7 @@
   "author": {
     "name": "Burlet Médéric"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "people",
     "relationships",
@@ -14,5 +14,7 @@
     "sqlite",
     "personal",
     "graph"
-  ]
+  ],
+  "homepage": "https://starside.io",
+  "repository": "https://github.com/starside-io/fellowship"
 }

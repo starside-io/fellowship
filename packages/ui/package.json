@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The standalone shell and the design system. Talks to the core through POST /rpc and nothing else.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

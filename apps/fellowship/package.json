@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The standalone app: the mini-host and the UI in one process.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "bin": {
     "fellowship": "./dist/cli.js",

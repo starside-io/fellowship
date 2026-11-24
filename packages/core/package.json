@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The people module: schemas, tools, domain logic and the silo schema. Knows nothing about a host beyond its ports.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {

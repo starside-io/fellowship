@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "The standalone host: the ports, POST /rpc, the media route and the stdio MCP server, in one Node process that owns the SQLite file.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": {
