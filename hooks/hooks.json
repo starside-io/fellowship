@@ -1,0 +1,17 @@
+{
+  "description": "Builds a fresh plugin install in the background, then offers /fellowship:setup while the owner's own record is missing or empty. Silent otherwise.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-bootstrap.mjs\" hook 2>/dev/null || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

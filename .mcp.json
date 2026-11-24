@@ -3,7 +3,8 @@
     "fellowship": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/packages/mini-host/dist/mcp.js"
+        "${CLAUDE_PLUGIN_ROOT}/scripts/plugin-bootstrap.mjs",
+        "mcp"
       ],
       "env": {
         "FELLOWSHIP_DB_PATH": "${FELLOWSHIP_DB_PATH:-}"

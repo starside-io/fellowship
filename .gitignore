@@ -28,3 +28,7 @@ adapters/**/*.bin
 .env.*
 !.env.example
 .DS_Store
+
+# A plugin install building itself: see scripts/plugin-bootstrap.mjs.
+.plugin-build.lock/
+.plugin-build.log
