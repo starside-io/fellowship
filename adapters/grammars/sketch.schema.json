@@ -1,0 +1,94 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 2000
+    },
+    "whatLands": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "whatToAvoid": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "opener": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "traits": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "left": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "right": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "label",
+              "left",
+              "right",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 12
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      },
+      "minItems": 1,
+      "maxItems": 20
+    }
+  },
+  "required": [
+    "summary",
+    "sources"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

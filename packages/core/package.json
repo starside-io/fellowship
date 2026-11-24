@@ -1,0 +1,66 @@
+{
+  "name": "@fellowship/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "The people module: schemas, tools, domain logic and the silo schema. Knows nothing about a host beyond its ports.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./domain": {
+      "types": "./dist/domain/index.d.ts",
+      "default": "./dist/domain/index.js"
+    },
+    "./drafting": {
+      "types": "./dist/domain/drafting/index.d.ts",
+      "default": "./dist/domain/drafting/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "default": "./dist/schemas/index.js"
+    },
+    "./scoring": {
+      "types": "./dist/domain/scoring.d.ts",
+      "default": "./dist/domain/scoring.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "default": "./dist/storage/index.js"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-sql.mjs",
+    "db:check": "tsx scripts/db.ts check",
+    "db:generate": "tsx scripts/db.ts generate",
+    "db:migrate": "tsx scripts/db.ts migrate",
+    "db:new": "tsx scripts/db.ts new",
+    "db:path": "tsx scripts/db.ts path",
+    "grammars": "tsx scripts/grammars.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fellowship/connector-chat-export": "workspace:*",
+    "@prisma/client": "6.19.3",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.2"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "prisma": "6.19.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
+  },
+  "files": [
+    "dist",
+    "generated"
+  ]
+}

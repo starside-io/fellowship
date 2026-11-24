@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Fellowship module config",
+  "description": "The values the host stores and hands over through the settings port. The shapes and the defaults are owned by packages/core/src/config, which this file mirrors.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "halfLifeDays": {
+      "type": "number",
+      "default": 180,
+      "minimum": 30,
+      "maximum": 1095,
+      "description": "Half life of a contribution to a link score, in days. LinkStat.score is a cache of this, so a change triggers a full recompute before the new value counts as applied."
+    },
+    "scoreScale": {
+      "type": "number",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 50,
+      "description": "Multiplier applied before the clamp to -100..100. Same recompute hook as halfLifeDays."
+    },
+    "avatarResolvers": {
+      "type": "array",
+      "default": [],
+      "maxItems": 20,
+      "description": "Sources a profile picture may be fetched from, in the order they are tried. Templates are https only, carry no credentials, and must contain a placeholder.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "platform", "urlTemplate", "enabled"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "platform": { "type": "string" },
+          "urlTemplate": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    },
+    "chatThresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Sample sizes below which a chat figure is reported as insufficient rather than guessed at.",
+      "properties": {
+        "messages": { "type": "integer", "minimum": 1, "default": 20 },
+        "lengths": { "type": "integer", "minimum": 1, "default": 10 },
+        "openers": { "type": "integer", "minimum": 1, "default": 6 },
+        "replies": { "type": "integer", "minimum": 1, "default": 8 },
+        "p90Replies": { "type": "integer", "minimum": 1, "default": 12 },
+        "trendMessages": { "type": "integer", "minimum": 1, "default": 10 },
+        "sessions": { "type": "integer", "minimum": 1, "default": 5 }
+      }
+    },
+    "messageChunk": {
+      "type": "integer",
+      "default": 500,
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "Rows per batch when storing or importing messages. 500 across 8 columns binds 4000 parameters, well under SQLite's ceiling."
+    }
+  }
+}

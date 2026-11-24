@@ -1,0 +1,30 @@
+{
+  "name": "fellowship",
+  "version": "0.0.1",
+  "private": true,
+  "description": "The standalone app: the mini-host and the UI in one process.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "fellowship": "./dist/cli.js",
+    "fsp": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/cli.ts",
+    "test": "echo \"no tests in the app shell yet\""
+  },
+  "dependencies": {
+    "@fellowship/core": "workspace:*",
+    "@fellowship/mini-host": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "files": [
+    "dist"
+  ]
+}

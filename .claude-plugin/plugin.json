@@ -1,0 +1,18 @@
+{
+  "name": "fellowship",
+  "description": "Local-first personal relationship tracker. Add people, record the occasions you shared, read back closeness and insights, and profile someone from a chat export. One SQLite file, no network, every assistant write lands unconfirmed.",
+  "version": "0.0.1",
+  "author": {
+    "name": "Burlet Médéric"
+  },
+  "license": "MIT",
+  "keywords": [
+    "people",
+    "relationships",
+    "crm",
+    "local-first",
+    "sqlite",
+    "personal",
+    "graph"
+  ]
+}

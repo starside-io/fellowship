@@ -1,0 +1,11 @@
+packages:
+  - packages/*
+  - apps/*
+
+# pnpm 10 blocks install scripts by default. These three need theirs: Prisma
+# places its query engine, esbuild its platform binary.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - esbuild
+  - prisma

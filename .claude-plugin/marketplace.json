@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "fellowship",
+  "description": "Fellowship: a local-first tracker of the people in your life, their facts, the occasions you shared, and the derived strength of every connection.",
+  "owner": {
+    "name": "Burlet Médéric"
+  },
+  "plugins": [
+    {
+      "name": "fellowship",
+      "description": "Add people, log occasions, read closeness and insights, profile someone from a chat export.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

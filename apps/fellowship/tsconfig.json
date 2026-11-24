@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": ["node"],
+    "paths": {
+      "@fellowship/core": ["../../packages/core/src/index.ts"],
+      "@fellowship/core/drafting": ["../../packages/core/src/domain/drafting/index.ts"],
+      "@fellowship/core/scoring": ["../../packages/core/src/domain/scoring.ts"],
+      "@fellowship/connector-chat-export": ["../../packages/connector-chat-export/src/index.ts"],
+      "@fellowship/mini-host": ["../../packages/mini-host/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

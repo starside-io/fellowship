@@ -1,0 +1,27 @@
+{
+  "name": "@fellowship/connector-chat-export",
+  "version": "0.0.1",
+  "private": true,
+  "description": "The chat export connector: the parser, and the shape it hands rows over in. Pure, and nothing in it reaches a database or a disk.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
+  },
+  "files": [
+    "dist"
+  ]
+}

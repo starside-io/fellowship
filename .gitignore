@@ -1,0 +1,30 @@
+node_modules/
+dist/
+
+# The Prisma client is generated from src/storage/schema.prisma.
+packages/*/generated/
+.next/
+*.tsbuildinfo
+
+# The database and its WAL sidecars. Real personal data, never committed.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Snapshots exported from the app hold the same data.
+*.snapshot.json
+backups/
+
+# Real chat exports.
+inputs/
+
+# Model weights.
+adapters/**/*.safetensors
+adapters/**/*.gguf
+adapters/**/*.bin
+
+.env
+.env.*
+!.env.example
+.DS_Store

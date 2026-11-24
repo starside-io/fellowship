@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fellowship</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: #f6efe6;
+        color: #2a2b2e;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #232427; color: #f5ede3; }
+      }
+      .mark {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #b3162f;
+        display: inline-block;
+        margin-right: 8px;
+        animation: pulse 1.2s ease-in-out infinite;
+      }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+    </style>
+  </head>
+  <body>
+    <p><span class="mark"></span>Opening the fellowship</p>
+  </body>
+</html>

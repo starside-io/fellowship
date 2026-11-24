@@ -1,0 +1,348 @@
+// The silo. One SQLite file, one writer, owned by the host that opens it.
+//
+// Ported from the reference implementation's Postgres schema. Every difference
+// is deliberate and listed in docs/SPEC.md section 3:
+//   - the 12 enums are String columns, validated by src/schemas/enums.ts and
+//     constrained by a CHECK per column in the migration
+//   - the 4 scalar lists are Json columns, nothing queries them by element
+//   - avatar bytes live in PersonAvatar, never in a Person row
+//   - AppSetting is gone, settings belong behind the host settings port
+//   - @db.Date is DateTime, normalized to midnight UTC in core
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("FELLOWSHIP_DATABASE_URL")
+}
+
+model Person {
+  id          String    @id @default(uuid())
+  displayName String
+  firstName   String?
+  lastName    String?
+  isSelf      Boolean   @default(false)
+  /// The fallback swatch. Everything about the picture itself is in PersonAvatar.
+  avatarColor String
+  /// Date only. Midnight UTC.
+  birthday    DateTime?
+  location    String?
+  howWeMet    String?
+  /// Date only. Midnight UTC.
+  metOn       DateTime?
+  /// String[] in Postgres. A JSON array of strings here. No database default:
+  /// Prisma emits `DEFAULT []` for a Json default on SQLite, which SQLite reads
+  /// as an empty identifier and stores as "". Core writes the array explicitly.
+  commStyle   Json
+  /// Myers-Briggs type as the owner records it, for example INTJ or ENFP-A.
+  /// Typed by a person, never inferred: a draft cannot set it.
+  mbti        String?
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  avatar        PersonAvatar?
+  circles       Circle[]
+  interests     Tag[]                     @relation("PersonInterests")
+  allergies     Tag[]                     @relation("PersonAllergies")
+  dislikes      Tag[]                     @relation("PersonDislikes")
+  contacts      ContactChannel[]
+  customValues  CustomValue[]
+  notes         Note[]
+  events        EventParticipant[]
+  linksAsA      Link[]                    @relation("LinkPersonA")
+  linksAsB      Link[]                    @relation("LinkPersonB")
+  favours       Favour[]
+  profile       PersonProfile?
+  messages      Message[]
+  conversations ConversationParticipant[]
+
+  @@index([displayName])
+  @@index([archived])
+}
+
+/// The picture, kept locally so viewing a person pings nobody. Its own table so
+/// that no query can select the bytes by accident.
+model PersonAvatar {
+  personId String @id
+  image    Bytes
+  mime     String
+  /// AvatarSource: MANUAL | RESOLVER | ASSISTANT
+  source   String
+  /// The page or endpoint the picture came from.
+  sourceUrl String?
+  fetchedAt DateTime
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+}
+
+model ContactChannel {
+  id       String  @id @default(uuid())
+  personId String
+  /// ContactKind: EMAIL | PHONE | SOCIAL | OTHER
+  kind     String
+  platform String?
+  value    String
+  url      String?
+  isPrimary Boolean @default(false)
+  label     String?
+  /// ContactSource: MANUAL | IMPORT | ASSISTANT. Who put this row here, so an
+  /// assistant proposal stays distinguishable.
+  source     String  @default("MANUAL")
+  /// The page the handle was found on. Null when a person stated it directly.
+  sourceUrl  String?
+  /// ContactConfidence: HIGH | MEDIUM | LOW
+  confidence String?
+  /// When the user confirmed this exact value. Cleared whenever value changes.
+  verifiedAt DateTime?
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+}
+
+model Tag {
+  id     String @id @default(uuid())
+  /// TagKind: INTEREST | ALLERGY | DISLIKE
+  kind   String
+  name   String
+  colour String
+
+  interestedBy Person[] @relation("PersonInterests")
+  allergicBy   Person[] @relation("PersonAllergies")
+  dislikedBy   Person[] @relation("PersonDislikes")
+  notes        Note[]   @relation("NoteTags")
+
+  @@unique([kind, name])
+}
+
+model Circle {
+  id     String @id @default(uuid())
+  name   String @unique
+  colour String
+
+  people Person[]
+}
+
+model FieldDefinition {
+  id    String @id @default(uuid())
+  key   String @unique
+  label String
+  /// FieldType: TEXT | LONGTEXT | DATE | NUMBER | URL | TAGS | SELECT | BOOLEAN
+  type  String
+  /// String[] in Postgres. A JSON array of strings here. Written explicitly,
+  /// see the note on Person.commStyle.
+  options Json
+  /// FieldScope: STANDARD | CUSTOM
+  scope   String @default("STANDARD")
+  order   Int    @default(0)
+
+  values CustomValue[]
+}
+
+model CustomValue {
+  id                String @id @default(uuid())
+  personId          String
+  fieldDefinitionId String
+  value             Json
+
+  person          Person          @relation(fields: [personId], references: [id], onDelete: Cascade)
+  fieldDefinition FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, fieldDefinitionId])
+  @@index([fieldDefinitionId])
+}
+
+model Note {
+  id         String   @id @default(uuid())
+  personId   String?
+  eventId    String?
+  /// Tiptap document JSON.
+  body       Json
+  /// The plain text of the body, kept in step by core on every write.
+  ///
+  /// note_fts indexes this column rather than the document, because a trigger
+  /// cannot walk a Tiptap tree, and a search index maintained by hand beside
+  /// the row is a search index that leaks when the row cascades away.
+  searchText String?
+  occurredAt DateTime @default(now())
+  pinned     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  person Person? @relation(fields: [personId], references: [id], onDelete: Cascade)
+  event  Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tags   Tag[]   @relation("NoteTags")
+
+  @@index([personId])
+  @@index([eventId])
+  @@index([occurredAt])
+}
+
+model Event {
+  id         String   @id @default(uuid())
+  title      String
+  /// EventType: HANGOUT | MEAL | CALL | TRIP | PARTY | WORK | FAVOUR | CONFLICT | MILESTONE | OTHER
+  type       String   @default("HANGOUT")
+  occurredAt DateTime
+  location   String?
+  /// Tiptap document JSON.
+  description Json?
+  sentiment   Int      @default(0)
+  weight      Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participants EventParticipant[]
+  notes        Note[]
+
+  @@index([occurredAt])
+}
+
+model EventParticipant {
+  eventId   String
+  personId  String
+  role      String?
+  sentiment Int?
+
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, personId])
+  @@index([personId])
+}
+
+model Link {
+  id        String @id @default(uuid())
+  aPersonId String
+  bPersonId String
+  /// TieType: FRIEND | CLOSE_FRIEND | PARTNER | FAMILY | COLLEAGUE | ACQUAINTANCE | KNOWS_OF | ESTRANGED
+  tie       String @default("ACQUAINTANCE")
+  manualScore Float?
+  pinned      Boolean @default(false)
+  notes       String?
+
+  personA Person    @relation("LinkPersonA", fields: [aPersonId], references: [id], onDelete: Cascade)
+  personB Person    @relation("LinkPersonB", fields: [bPersonId], references: [id], onDelete: Cascade)
+  stat    LinkStat?
+
+  @@unique([aPersonId, bPersonId])
+  @@index([bPersonId])
+}
+
+model LinkStat {
+  linkId        String    @id
+  score         Float     @default(0)
+  eventCount    Int       @default(0)
+  lastEventAt   DateTime?
+  positiveCount Int       @default(0)
+  negativeCount Int       @default(0)
+
+  link Link @relation(fields: [linkId], references: [id], onDelete: Cascade)
+}
+
+/// One imported chat export. The raw material a sketch is written from.
+model Conversation {
+  id     String @id @default(uuid())
+  /// ChatSource: WHATSAPP | OTHER
+  source String @default("WHATSAPP")
+  /// The chat or group name as exported.
+  title    String?
+  isGroup  Boolean @default(false)
+  fileName String?
+  importedAt     DateTime  @default(now())
+  firstMessageAt DateTime?
+  lastMessageAt  DateTime?
+  messageCount   Int       @default(0)
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([lastMessageAt])
+}
+
+/// A sender in an export, and the person it maps to once identified.
+model ConversationParticipant {
+  conversationId String
+  /// The display name exactly as it appears in the export.
+  senderName   String
+  personId     String?
+  isSelf       Boolean @default(false)
+  messageCount Int     @default(0)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  person       Person?      @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@id([conversationId, senderName])
+  @@index([personId])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderName     String
+  personId       String?
+  sentAt         DateTime
+  body           String
+  isFromSelf     Boolean  @default(false)
+  /// True for join, leave, and encryption notices rather than a real message.
+  isSystem       Boolean  @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  person       Person?      @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, sentAt])
+  @@index([personId, sentAt])
+}
+
+/// A sketch of how a person actually is, and how to spend time with them well.
+model PersonProfile {
+  id       String @id @default(uuid())
+  personId String @unique
+  /// The short report, written from their public profiles and your own history.
+  summary     String?
+  /// What tends to land with them.
+  whatLands   String?
+  /// What to steer clear of.
+  whatToAvoid String?
+  /// A conversation opener that works.
+  opener      String?
+  /// [{ key, label, left, right, value 0 to 100 }], the practical axes.
+  traits      Json?
+  /// The personality radar: [{ key, value 0 to 100, evidence }] over the fixed
+  /// axes in schemas/personality.ts, read from the chats and the history.
+  personality   Json?
+  /// When the radar was last written.
+  personalityAt DateTime?
+  /// String[] in Postgres. A JSON array of page URLs the summary was drawn
+  /// from. Written explicitly, see the note on Person.commStyle.
+  sources     Json
+  /// ProfileSource: MANUAL | ASSISTANT
+  source      String @default("MANUAL")
+  generatedAt DateTime?
+  /// When you confirmed the sketch reads true.
+  confirmedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+}
+
+/// A one line note of who owes whom, and what for.
+model Favour {
+  id       String @id @default(uuid())
+  personId String
+  /// FavourDirection: THEY_OWE_ME | I_OWE_THEM
+  direction   String
+  description String
+  settledAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+}

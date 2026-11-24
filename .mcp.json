@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "fellowship": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/packages/mini-host/dist/mcp.js"
+      ],
+      "env": {
+        "FELLOWSHIP_DB_PATH": "${FELLOWSHIP_DB_PATH:-}"
+      }
+    }
+  }
+}

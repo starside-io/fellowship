@@ -1,0 +1,125 @@
+{
+  "id": "people",
+  "namespacedId": "fellowship.people",
+  "name": "Fellowship",
+  "version": "0.0.1",
+  "description": "A local-first tracker of the people in one person's life: who they are, what they like, what to avoid, the occasions they shared, and the derived strength of every connection.",
+  "schemaVersion": 1,
+  "permissions": {
+    "network": "none",
+    "files": "none",
+    "connectors": [
+      "chat-export",
+      "media"
+    ]
+  },
+  "ports": {
+    "required": [
+      "storage",
+      "review",
+      "bus",
+      "audit",
+      "settings",
+      "refs",
+      "media"
+    ],
+    "optional": [
+      "connectors",
+      "models",
+      "privacy"
+    ]
+  },
+  "silo": {
+    "tables": [
+      "Person",
+      "PersonAvatar",
+      "ContactChannel",
+      "Tag",
+      "Circle",
+      "FieldDefinition",
+      "CustomValue",
+      "Favour",
+      "Event",
+      "EventParticipant",
+      "Note",
+      "Link",
+      "LinkStat",
+      "Conversation",
+      "ConversationParticipant",
+      "Message",
+      "PersonProfile"
+    ],
+    "search": [
+      "person_fts",
+      "note_fts",
+      "message_fts"
+    ]
+  },
+  "tools": {
+    "read": [
+      "people.search",
+      "people.get",
+      "people.self",
+      "people.fields",
+      "people.activity",
+      "people.timeline",
+      "people.insights",
+      "people.chat_insights",
+      "people.read_messages",
+      "people.graph",
+      "people.social_platforms",
+      "people.check_socials",
+      "people.avatar_candidates",
+      "people.resolve_person",
+      "people.export",
+      "people.dashboard",
+      "people.personality_status",
+      "people.vcard",
+      "people.draft_context",
+      "people.review"
+    ],
+    "write": [
+      "people.create",
+      "people.update",
+      "people.archive",
+      "people.add_note",
+      "people.log_interaction",
+      "people.set_contacts",
+      "people.set_tags",
+      "people.set_circles",
+      "people.set_custom_values",
+      "people.set_fields",
+      "people.set_favour",
+      "people.set_link",
+      "people.import_chat",
+      "people.map_sender",
+      "people.set_resolvers",
+      "people.propose_draft"
+    ],
+    "needsOk": [
+      "people.attach_socials",
+      "people.write_sketch",
+      "people.set_personality",
+      "people.set_picture",
+      "people.import",
+      "people.decide"
+    ]
+  },
+  "events": {
+    "emits": [
+      "people.interaction.logged",
+      "people.closeness.changed",
+      "people.person.created",
+      "people.sketch.written",
+      "people.personality.written"
+    ],
+    "listens": [
+      "connector.chat.imported"
+    ]
+  },
+  "config": "./config.schema.json",
+  "adapters": {
+    "lora": "./adapters/people-lora",
+    "grammars": "./adapters/grammars"
+  }
+}

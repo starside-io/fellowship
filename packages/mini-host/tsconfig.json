@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": ["node"],
+    "paths": {
+      "@fellowship/core": ["../core/src/index.ts"],
+      "@fellowship/core/drafting": ["../core/src/domain/drafting/index.ts"],
+      "@fellowship/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src", "tests"]
+}
