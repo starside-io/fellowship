@@ -61,6 +61,89 @@ describe("the stdio server", () => {
     }
   });
 
+  it("lists the fields of every tool, whatever shape its schema has", async () => {
+    const host = await throwawayHost();
+    const { client, close } = await connect(host);
+    try {
+      const listed = await client.listTools();
+      const fields = (name: string) =>
+        Object.keys(
+          (listed.tools.find((tool) => tool.name === name)?.inputSchema as {
+            properties?: object;
+          }).properties ?? {},
+        );
+
+      // A refine, an intersection, a default and a discriminated union: each
+      // used to go out as an empty parameter list.
+      expect(fields("people_add_note")).toEqual(expect.arrayContaining(["personId", "body"]));
+      expect(fields("people_set_favour")).toEqual(
+        expect.arrayContaining(["personId", "favourId", "direction", "settled"]),
+      );
+      expect(fields("people_map_sender")).toEqual(
+        expect.arrayContaining(["conversationId", "senderName", "personId"]),
+      );
+      expect(fields("people_read_messages")).toEqual(
+        expect.arrayContaining(["personId", "query"]),
+      );
+      expect(fields("people_write_sketch")).toEqual(
+        expect.arrayContaining(["personId", "sources", "confirmedByUser"]),
+      );
+      expect(fields("people_draft_context")).toEqual(
+        expect.arrayContaining(["job", "personId", "conversationId"]),
+      );
+      expect(fields("people_import_chat")).toEqual(expect.arrayContaining(["text", "filePath"]));
+
+      // Only a tool that really takes nothing lists nothing.
+      const empty = listed.tools
+        .filter((tool) => fields(tool.name).length === 0)
+        .map((tool) => tool.name);
+      for (const name of empty) {
+        const definition = host.api.tools.find((tool) => mcpName(tool.name) === name)!;
+        expect(definition.input.safeParse({}).success, name).toBe(true);
+      }
+    } finally {
+      await close();
+      await host.close();
+    }
+  });
+
+  it("still validates against the real schema behind a flattened one", async () => {
+    const host = await throwawayHost();
+    const { client, close } = await connect(host);
+    try {
+      const personId = await seedPerson(host, "Sam Rivera");
+
+      // A note goes in through the refined schema it is advertised without.
+      const note = await client.callTool({
+        name: "people_add_note",
+        arguments: {
+          personId,
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Training for the autumn half marathon." }],
+              },
+            ],
+          },
+        },
+      });
+      expect(note.isError).toBeFalsy();
+
+      // And the refine still refuses what it always refused.
+      const empty = await client.callTool({ name: "people_add_note", arguments: { personId } });
+      expect(empty.isError).toBe(true);
+
+      // A tool with nothing required takes no arguments at all.
+      const self = await client.callTool({ name: "people_self", arguments: {} });
+      expect(self.isError).toBeFalsy();
+    } finally {
+      await close();
+      await host.close();
+    }
+  });
+
   it("drives the whole flow: add, log, read back", async () => {
     const host = await throwawayHost();
     const { client, close } = await connect(host);

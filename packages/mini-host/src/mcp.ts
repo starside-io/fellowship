@@ -7,6 +7,7 @@ import { tools as coreTools } from "@fellowship/core";
 import type { ToolDefinition } from "@fellowship/core";
 
 import { startMiniHost, type MiniHost, type MiniHostOptions } from "./host.js";
+import { advertisedSchema } from "./mcp-schema.js";
 
 /**
  * The stdio MCP server: the second transport over the one registry.
@@ -55,7 +56,7 @@ export function createMcpServer(host: MiniHost): McpServer {
       {
         title: tool.title,
         description: describe(tool),
-        inputSchema: tool.input,
+        inputSchema: advertisedSchema(tool.input as never),
         annotations: {
           readOnlyHint: tool.kind === "read",
           destructiveHint: tool.kind === "needs-ok",
