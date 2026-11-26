@@ -1,6 +1,6 @@
 {
   "name": "@fellowship/ui",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "description": "The standalone shell and the design system. Talks to the core through POST /rpc and nothing else.",
   "license": "Apache-2.0",

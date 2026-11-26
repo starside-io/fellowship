@@ -38,7 +38,7 @@ function describe(tool: ToolDefinition<never, unknown>): string {
 
 export function createMcpServer(host: MiniHost): McpServer {
   const server = new McpServer(
-    { name: "fellowship", version: "0.0.2" },
+    { name: "fellowship", version: "0.0.3" },
     {
       instructions: [
         "Fellowship tracks the people in one person's life: who they are, what they like, what to avoid, the occasions they shared, and how close each connection is.",
