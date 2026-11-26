@@ -1,8 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { ArrowUpCircle } from "lucide-react";
+import { ArrowUpCircle, RefreshCw } from "lucide-react";
 
 import { host, type InstallResult, type UpdateStatus } from "@/client";
-import { SectionCard, StatRow } from "@/ds/index";
+import { SectionCard } from "@/ds/index";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Label } from "@/ui/label";
@@ -125,41 +125,45 @@ export function UpdateButton() {
   );
 }
 
-/** In Settings: the switch, what is installed, and what is out. */
+/** "just now", "12 minutes ago", "yesterday": when the last answer came in. */
+function ago(iso: string | null): string | null {
+  if (!iso) return null;
+  const seconds = Math.round((Date.parse(iso) - Date.now()) / 1000);
+  if (Math.abs(seconds) < 60) return "just now";
+  const format = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const minutes = Math.round(seconds / 60);
+  if (Math.abs(minutes) < 60) return format.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return format.format(hours, "hour");
+  return format.format(Math.round(hours / 24), "day");
+}
+
+/** One sentence for where things stand, instead of a table of three facts. */
+function summary(status: UpdateStatus): string {
+  const installed = status.installed;
+  if (!installed) return "Fellowship is not installed as a Claude Code plugin here, so there is nothing to update.";
+  if (!status.enabled) return `Version ${installed.version} is installed.`;
+
+  const checked = ago(status.checkedAt);
+  const when = checked ? ` Checked ${checked}.` : "";
+  if (status.updateAvailable && status.latest) {
+    return `Version ${status.latest.version} is out. You have ${installed.version}.`;
+  }
+  if (!status.latest) return `Version ${installed.version} is installed. No release is published yet.${when}`;
+  return `Version ${installed.version} is the latest.${when}`;
+}
+
+/** In Settings: the switch, and one line on where things stand. */
 export function UpdatesCard() {
   const { status, installing, result, checking } = useUpdates();
-
-  const footer =
-    status?.enabled && status.installed ? (
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={checking || installing}
-          onClick={() => void load(true)}
-        >
-          {checking ? "Checking" : "Check now"}
-        </Button>
-        {status.updateAvailable ? (
-          <Button size="sm" disabled={installing} onClick={() => void install()}>
-            {installing ? "Installing" : `Install ${status.latest?.version}`}
-          </Button>
-        ) : null}
-        {result ? (
-          <span className={result.ok ? "text-positive text-sm" : "text-negative text-sm"}>
-            {result.message}
-          </span>
-        ) : null}
-      </div>
-    ) : undefined;
+  const canCheck = Boolean(status?.enabled && status.installed);
 
   return (
     <SectionCard
       title="Updates"
-      description="Off until you turn it on. When it is on, the host asks GitHub once a day for the newest Fellowship release. Nothing about you or your people is sent."
-      {...(footer ? { footer } : {})}
+      description="Off until you turn it on. Once a day the host asks GitHub for the newest release. Nothing about you or your people is sent."
     >
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Checkbox
             id="update-check"
@@ -167,53 +171,56 @@ export function UpdatesCard() {
             disabled={status === null || checking}
             onCheckedChange={(value) => void toggle(value === true)}
           />
-          <Label htmlFor="update-check">Check for plugin updates</Label>
-        </div>
-
-        <div className="space-y-1">
-          <StatRow
-            label="Installed"
-            value={
-              status?.installed ? (
-                <span>
-                  {status.installed.version}{" "}
-                  <code className="text-muted-foreground text-xs">{status.installed.pluginId}</code>
-                </span>
-              ) : (
-                "Not installed as a Claude Code plugin"
-              )
-            }
-          />
-          {status?.enabled && status.installed ? (
-            <>
-              <StatRow
-                label="Latest release"
-                value={
-                  status.latest ? (
-                    <a
-                      href={status.latest.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline underline-offset-2"
-                    >
-                      {status.latest.version}
-                    </a>
-                  ) : (
-                    "None published yet"
-                  )
-                }
-              />
-              <StatRow
-                label="Last checked"
-                value={status.checkedAt ? new Date(status.checkedAt).toLocaleString() : "Never"}
-              />
-            </>
+          <Label htmlFor="update-check" className="flex-1">
+            Check for plugin updates
+          </Label>
+          {canCheck ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={checking || installing}
+              onClick={() => void load(true)}
+            >
+              <RefreshCw className={checking ? "animate-spin" : undefined} aria-hidden />
+              {checking ? "Checking" : "Check now"}
+            </Button>
           ) : null}
         </div>
 
-        {status?.error ? <p className="text-negative text-sm">{status.error}</p> : null}
+        {status ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-6">
+            <p className="text-muted-foreground text-sm">
+              {summary(status)}
+              {status.updateAvailable && status.latest ? (
+                <>
+                  {" "}
+                  <a
+                    href={status.latest.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground underline underline-offset-2"
+                  >
+                    What changed
+                  </a>
+                </>
+              ) : null}
+            </p>
+            {status.updateAvailable && status.latest ? (
+              <Button size="sm" disabled={installing} onClick={() => void install()}>
+                {installing ? "Installing" : `Install ${status.latest.version}`}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {status?.error ? <p className="text-negative pl-6 text-sm">{status.error}</p> : null}
+        {result ? (
+          <p className={`pl-6 text-sm ${result.ok ? "text-positive" : "text-negative"}`}>
+            {result.message}
+          </p>
+        ) : null}
         {result && !result.ok && result.output ? (
-          <pre className="bg-muted max-h-48 overflow-auto rounded-md p-2 text-xs whitespace-pre-wrap">
+          <pre className="bg-muted ml-6 max-h-48 overflow-auto rounded-md p-2 text-xs whitespace-pre-wrap">
             {result.output}
           </pre>
         ) : null}
