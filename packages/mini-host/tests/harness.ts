@@ -8,12 +8,15 @@ import { startMiniHost, type MiniHost } from "../src/host.js";
  * A throwaway pair of files, migrated on the way up by the host itself.
  * Never point a test at the real silo: it holds real people's records.
  */
-export async function throwawayHost(options: { inbox?: string } = {}): Promise<MiniHost> {
+export async function throwawayHost(
+  options: { inbox?: string; env?: NodeJS.ProcessEnv } = {},
+): Promise<MiniHost> {
   const dir = mkdtempSync(join(tmpdir(), "fellowship-host-"));
   return startMiniHost({
     dbPath: join(dir, "fellowship.db"),
     hostDbPath: join(dir, "host.db"),
     ...(options.inbox ? { inbox: options.inbox } : {}),
+    ...(options.env ? { env: options.env } : {}),
   });
 }
 

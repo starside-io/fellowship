@@ -8,6 +8,7 @@ import { useRpc } from "@/lib/use-rpc";
 import { Badge } from "@/ui/badge";
 import { ThemeToggle } from "@/app/theme";
 import { HearthMark } from "@/app/components/logo";
+import { UpdateButton } from "@/app/components/updates";
 import { useEffect, useState } from "react";
 
 /**
@@ -115,6 +116,7 @@ export function Rail({ current, onSearch }: { current: Route; onSearch: () => vo
       </ul>
 
       <div className="mt-auto space-y-2 p-3">
+        <UpdateButton />
         {self ? (
           <a
             href={hrefOf({ name: "person", personId: self.id })}

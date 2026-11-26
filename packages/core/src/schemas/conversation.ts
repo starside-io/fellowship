@@ -16,11 +16,19 @@ export const senderNameSchema = z
   .min(1, "A sender name is required")
   .max(200);
 
+/*
+ * Exactly one of text and filePath is required. That rule is checked by the
+ * tool rather than with a refine here: a refined schema is no longer an object
+ * schema, and the MCP server would then advertise the tool with no parameters.
+ */
 export const importChatSchema = z.object({
   text: z
     .string()
     .min(1, "Expected the exported chat text")
-    .max(MAX_EXPORT_CHARS, "That export is too large to import"),
+    .max(MAX_EXPORT_CHARS, "That export is too large to import")
+    .optional(),
+  /** A WhatsApp .txt or .zip export on disk, read by the host. */
+  filePath: z.string().trim().min(1, "Expected a path to the export").max(1024).optional(),
   fileName: optionalText,
   source: chatSourceSchema.default("WHATSAPP"),
   /** The name the owner appears under in the export, when it is not obvious. */

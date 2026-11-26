@@ -146,6 +146,11 @@ the settings and the connector cursors, so a module uninstall or a silo export
 never entangles them. Both are WAL, and all three files of each move together
 or the database is corrupt. Both are created and migrated on first run.
 
+`people.import_chat` with `filePath` has the host read a WhatsApp `.txt` or
+`.zip` export off disk, from `~/Downloads`, `~/Desktop`, `~/Documents` and the
+inbox only, or from the folders `FELLOWSHIP_IMPORT_ROOTS` lists (colon
+separated). The path is resolved through symlinks before that check.
+
 ## The tool surface
 
 42 tools in four classes, listed in `module.json` and by `pnpm start tools`.
@@ -222,6 +227,21 @@ npm publish .npm-package --access public
 
 Once it is published, the plugin can drop the first run build and point
 `.mcp.json` at `npx -y @starside/fellowship mcp`, the way neurowire does.
+
+## Releases and the update check
+
+The update check is off until the owner turns it on in Settings. When it is
+on, the host asks GitHub for the newest release of `starside-io/fellowship` at
+most once a day, caches the answer in `update-check.json` beside `host.db`, and
+compares the release tag with the plugin version Claude Code recorded in
+`~/.claude/plugins/installed_plugins.json`. A newer release shows an update
+button in the app's rail, and the SessionStart hook offers it once per
+session. The button runs `claude plugin marketplace update` and then
+`claude plugin update`, and the new version loads when Claude Code restarts.
+
+To ship one: bump `version` in `.claude-plugin/plugin.json` and `package.json`,
+push, then publish a GitHub release tagged `v<version>`. Prereleases and
+drafts are never offered.
 
 ## Install the plugin from a checkout
 

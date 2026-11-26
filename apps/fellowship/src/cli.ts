@@ -7,11 +7,13 @@ import { fileURLToPath } from "node:url";
 import { storage } from "@fellowship/core";
 import {
   HostAlreadyRunning,
+  checkForUpdates,
   formatVerify,
   healthPid,
   hostLockPath,
   liveHostLock,
   processAlive,
+  readUpdatesEnabled,
   resolveHostDbPath,
   runStdioServer,
   serveMiniHost,
@@ -333,7 +335,7 @@ async function main(argv: string[]): Promise<number> {
  * safe beside a running host and fast enough for a session start hook. A
  * missing file or a record with nothing but a name both mean setup is to do.
  */
-function whoami(hook: boolean): number {
+async function whoami(hook: boolean): Promise<number> {
   const path = storage.resolveDbPath();
   let self: Record<string, unknown> | undefined;
   let contacts = 0;
@@ -375,15 +377,24 @@ function whoami(hook: boolean): number {
   const needed = !self || missing.length >= 4;
 
   if (hook) {
-    if (!needed) return 0;
-    const message = self
-      ? `Fellowship: the owner's own record ("${String(self["displayName"])}") has almost nothing on it (missing ${missing.join(", ")}).`
-      : "Fellowship: there is no record of the owner yet, so closeness and the app's profile card have nothing to measure against.";
+    const context: string[] = [];
+    if (needed) {
+      const message = self
+        ? `Fellowship: the owner's own record ("${String(self["displayName"])}") has almost nothing on it (missing ${missing.join(", ")}).`
+        : "Fellowship: there is no record of the owner yet, so closeness and the app's profile card have nothing to measure against.";
+      context.push(
+        `${message} When it fits the conversation, offer once to run /fellowship:setup, which asks a few questions and fills it in. Do not push if the user is busy with something else.`,
+      );
+    }
+    const update = await updateOffer();
+    if (update) context.push(update);
+
+    if (context.length === 0) return 0;
     process.stdout.write(
       `${JSON.stringify({
         hookSpecificOutput: {
           hookEventName: "SessionStart",
-          additionalContext: `${message} When it fits the conversation, offer once to run /fellowship:setup, which asks a few questions and fills it in. Do not push if the user is busy with something else.`,
+          additionalContext: context.join("\n\n"),
         },
       })}\n`,
     );
@@ -402,6 +413,26 @@ function whoami(hook: boolean): number {
     ].join("\n"),
   );
   return 0;
+}
+
+/**
+ * The update half of the session start hook. Silent unless the owner turned
+ * the check on and a newer release than the installed plugin is out. The
+ * answer is cached beside host.db for a day, so most sessions never reach the
+ * network, and a slow GitHub costs at most the fetch timeout.
+ */
+async function updateOffer(): Promise<string | null> {
+  try {
+    const hostDbPath = resolveHostDbPath();
+    const status = await checkForUpdates({
+      enabled: readUpdatesEnabled(hostDbPath),
+      hostDbPath,
+    });
+    if (!status.updateAvailable || !status.installed || !status.latest) return null;
+    return `Fellowship: version ${status.latest.version} of the plugin is out (${status.installed.version} is installed). Release notes: ${status.latest.url}. When it fits the conversation, offer once to update it: run \`${status.command}\`, or press the update button in the Fellowship app, then restart Claude Code to load it. Do not push if the user is busy with something else.`;
+  } catch {
+    return null;
+  }
 }
 
 /**

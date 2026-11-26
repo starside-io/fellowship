@@ -100,6 +100,37 @@ async function hostGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function hostPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${BASE}/host${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const answer = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new RpcError(path, "failed", answer?.error ?? `The host answered ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+/** The plugin update check. Mirrors UpdateStatus in mini-host's updates.ts. */
+export interface UpdateStatus {
+  enabled: boolean;
+  installed: { pluginId: string; marketplace: string; version: string; scope: string } | null;
+  latest: { version: string; tag: string; url: string; publishedAt: string | null } | null;
+  updateAvailable: boolean;
+  checkedAt: string | null;
+  error: string | null;
+  command: string | null;
+}
+
+export interface InstallResult {
+  ok: boolean;
+  message: string;
+  output: string;
+  command: string | null;
+}
+
 export interface ProposalRow {
   id: string;
   tool: string;
@@ -138,6 +169,29 @@ export const host = {
   events: (limit = 20) => hostGet<{ events: EventRow[] }>(`/events?limit=${limit}`),
 
   config: () => hostGet<{ config: ModuleConfigShape }>("/config"),
+
+  /** Never reaches the network while the check is off. */
+  updates: (refresh = false) => hostGet<UpdateStatus>(`/updates${refresh ? "?refresh=1" : ""}`),
+
+  setUpdates: (enabled: boolean) => hostPost<UpdateStatus>("/updates/settings", { enabled }),
+
+  /** Answers with what happened either way, so a failure can say what to run instead. */
+  async installUpdate(): Promise<InstallResult> {
+    const response = await fetch(`${BASE}/host/updates/install`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const body = (await response.json().catch(() => null)) as InstallResult | null;
+    return (
+      body ?? {
+        ok: false,
+        message: `The host answered ${response.status}`,
+        output: "",
+        command: null,
+      }
+    );
+  },
 
   health: async () => {
     const response = await fetch(`${BASE}/health`);

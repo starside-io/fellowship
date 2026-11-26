@@ -6,6 +6,7 @@ import { SectionCard, StatRow } from "@/ds/index";
 import { useRpc, useWrite, invalidate } from "@/lib/use-rpc";
 import { Failure, Loading } from "@/app/components/states";
 import { DraftSenders } from "@/app/components/draft";
+import { UpdatesCard } from "@/app/components/updates";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
@@ -46,7 +47,8 @@ export function Settings() {
       <header>
         <h1 className="font-heading text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm">
-          Everything here is local. Nothing in this app reaches the network by itself.
+          Everything here is local. Nothing in this app reaches the network by itself, apart from
+          the update check below once you turn it on.
         </p>
       </header>
 
@@ -61,6 +63,8 @@ export function Settings() {
       <ImportChat />
 
       <Transfer />
+
+      <UpdatesCard />
 
       <SectionCard title="The files" description="Two of them, one per owner.">
         {files === null ? (

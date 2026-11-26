@@ -137,8 +137,12 @@ failed.
 The richest evidence available, because it is what the person actually wrote
 rather than what the user remembers. In order, no step skipped:
 
-1. `people.import_chat` reads the file off disk itself. A year of messages never
-   passes through the conversation, which is the entire reason it works that way.
+1. `people.import_chat` with `filePath`: the host reads the WhatsApp `.txt` or
+   `.zip` export off disk itself, so a year of messages never passes through the
+   conversation. Pass `text` only for a short chat the user pasted. Files are read
+   from Downloads, Desktop and Documents, or the folders `FELLOWSHIP_IMPORT_ROOTS`
+   lists. Never split a chat into parts: a re-import of a chat with the same
+   person rewrites that conversation, so each part would replace the one before.
 2. `people.map_sender` binds each sender name in the export to a person record.
    Search for each sender first. Ask when a name is ambiguous. With many
    unmapped senders, draft the matches instead (`people.draft_context` with

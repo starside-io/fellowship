@@ -7,6 +7,7 @@ export * from "./mcp.js";
 export * from "./rpc.js";
 export * from "./server.js";
 export * from "./specialist.js";
+export * from "./updates.js";
 export * from "./verify.js";
 export { ImageFetchError, assertFetchableUrl, isBlockedAddress, isBlockedHostname } from "./media/guard.js";
 export { parseOgImage, OG_IMAGE_RESOLVER_ID } from "./media/og-image.js";

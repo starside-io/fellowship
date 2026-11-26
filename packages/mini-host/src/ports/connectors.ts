@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { storage } from "@fellowship/core";
 import type { ConnectorPull, ConnectorsPort } from "@fellowship/core";
 
+import { readChatExportFile, resolveImportRoots } from "./chat-file.js";
 import type { HostStore } from "./host-store.js";
 
 /**
@@ -13,6 +14,9 @@ import type { HostStore } from "./host-store.js";
  * exports into, and hands over normalized items. The cursor is the newest
  * modified time already handed over, kept in host.db so a restart does not
  * replay the inbox.
+ *
+ * It also reads one named export for people.import_chat's filePath, from the
+ * import roots only: see chat-file.ts.
  */
 
 export const INBOX_ENV = "FELLOWSHIP_INBOX";
@@ -36,8 +40,12 @@ export function createConnectorsPort(
   options: { inbox?: string; env?: NodeJS.ProcessEnv } = {},
 ): ConnectorsPort {
   const inbox = options.inbox ?? resolveInbox(options.env);
+  const importRoots = resolveImportRoots(options.env ?? process.env, inbox);
 
   return {
+    readChatExport: (path: string) => readChatExportFile(path, importRoots),
+
+
     async pull(connector: string, cursor?: string | null): Promise<ConnectorPull> {
       if (connector !== CHAT_EXPORT_CONNECTOR) {
         throw new Error(

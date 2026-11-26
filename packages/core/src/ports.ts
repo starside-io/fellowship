@@ -130,8 +130,23 @@ export interface ConnectorPull {
   cursor?: string | null;
 }
 
+/** An exported chat the host read off disk, as text. */
+export interface ChatExportFile {
+  /** The file's base name, which people.import_chat stores when no fileName is given. */
+  fileName: string;
+  text: string;
+}
+
 export interface ConnectorsPort {
   pull(connector: string, cursor?: string | null): Promise<ConnectorPull>;
+  /**
+   * Reads one exported chat for people.import_chat, so an assistant can pass a
+   * path instead of writing a megabyte of text out as a tool argument. The host
+   * decides which folders may be read, caps the size and unpacks a zip; the
+   * module only ever receives the text. Failures are ToolErrors that say what
+   * went wrong.
+   */
+  readChatExport(path: string): Promise<ChatExportFile>;
 }
 
 /**

@@ -18,6 +18,13 @@ import {
 } from "./host-lock.js";
 import { DraftError, draftFacts, draftSenders, draftSketch } from "./specialist.js";
 import { mediaRoutes } from "./media.js";
+import {
+  UPDATES_SETTING,
+  checkForUpdates,
+  installUpdate,
+  type CommandRunner,
+  type UpdateOptions,
+} from "./updates.js";
 import { rpcRoutes } from "./rpc.js";
 
 /**
@@ -42,7 +49,13 @@ export const PORT_ENV = "FELLOWSHIP_PORT";
 export const DEFAULT_HOSTNAME = "127.0.0.1";
 export const HOSTNAME_ENV = "FELLOWSHIP_HOST";
 
-export function createApp(host: MiniHost, options: { uiDir?: string } = {}): Hono {
+export interface AppOptions {
+  uiDir?: string;
+  /** Seams for the update check, so a test reaches neither GitHub nor the claude CLI. */
+  updates?: UpdateOptions & { run?: CommandRunner; claudePath?: string | null };
+}
+
+export function createApp(host: MiniHost, options: AppOptions = {}): Hono {
   const app = new Hono();
 
   // pid and fingerprint let a client tell this process apart from another
@@ -260,6 +273,44 @@ export function createApp(host: MiniHost, options: { uiDir?: string } = {}): Hon
   });
 
   hostRoutes.route("/draft", draftRoutes);
+
+  /**
+   * The plugin update check. Off until the owner turns it on; see updates.ts
+   * for what it sends and where the answer is cached.
+   */
+  const updates = options.updates ?? {};
+  const updatesEnabled = () => host.store.readSetting(UPDATES_SETTING) === true;
+  const updateStatus = (force: boolean) =>
+    checkForUpdates({ ...updates, enabled: updatesEnabled(), hostDbPath: host.hostPath, force });
+
+  hostRoutes.get("/updates", async (context) =>
+    context.json(await updateStatus(context.req.query("refresh") === "1")),
+  );
+
+  hostRoutes.post("/updates/settings", async (context) => {
+    if (!context.req.header("content-type")?.startsWith("application/json")) {
+      return context.json({ error: "Expected a JSON request" }, 415);
+    }
+    const body = (await context.req.json().catch(() => null)) as { enabled?: unknown } | null;
+    if (typeof body?.enabled !== "boolean") {
+      return context.json({ error: "Expected { enabled: true | false }" }, 400);
+    }
+    host.store.writeSetting(UPDATES_SETTING, body.enabled);
+    return context.json(await updateStatus(body.enabled));
+  });
+
+  /*
+   * Runs claude plugin update. JSON only: a page on another site can send a
+   * plain form post to a loopback port, but not a JSON one without a CORS
+   * preflight this host never answers.
+   */
+  hostRoutes.post("/updates/install", async (context) => {
+    if (!context.req.header("content-type")?.startsWith("application/json")) {
+      return context.json({ ok: false, message: "Expected a JSON request" }, 415);
+    }
+    const result = await installUpdate(updates);
+    return context.json(result, result.ok ? 200 : 502);
+  });
 
   app.route("/host", hostRoutes);
 

@@ -745,12 +745,24 @@ export const importChatTool = defineTool({
   title: "Import a chat export",
   kind: "write",
   summary:
-    "Parses an exported chat and stores it whole. Re-importing the same chat rewrites it rather than duplicating it, and mappings made by hand are carried across.",
+    "Parses an exported chat and stores it whole. Pass the chat as text, or pass filePath to read a WhatsApp .txt or .zip export from disk (preferred for anything over about 50 KB). Re-importing a chat with the same person rewrites that conversation rather than duplicating it, so never split a chat into parts. Mappings made by hand are carried across.",
   input: importChatSchema,
   async handler(ctx, input) {
-    return importChatExport(ctx.db, input, {
-      messageChunk: ctx.config.messageChunk,
-    });
+    const { text, filePath, ...rest } = input;
+    if (Boolean(text) === Boolean(filePath)) {
+      throw new ToolError("invalid_input", "Provide exactly one of text or filePath.");
+    }
+    const options = { messageChunk: ctx.config.messageChunk };
+
+    if (filePath) {
+      const file = await ctx.ports.connectors.readChatExport(filePath);
+      return importChatExport(
+        ctx.db,
+        { ...rest, text: file.text, fileName: rest.fileName ?? file.fileName },
+        options,
+      );
+    }
+    return importChatExport(ctx.db, { ...rest, text: text! }, options);
   },
 });
 

@@ -12,7 +12,10 @@ import type { Silo } from "../storage/client.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { parseWhatsAppExport } from "@fellowship/connector-chat-export";
 
-type ImportChatData = z.output<typeof importChatSchema>;
+/** The tool's input once a filePath has been swapped for the text it holds. */
+type ImportChatData = Omit<z.output<typeof importChatSchema>, "text" | "filePath"> & {
+  text: string;
+};
 
 const IMPORT_TIMEOUT_MS = 120_000;
 

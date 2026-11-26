@@ -9,6 +9,7 @@ import type {
   QueuedProposal,
 } from "../../src/ports.js";
 import { openSilo, type Silo } from "../../src/storage/client.js";
+import { ToolError } from "../../src/tools/registry.js";
 import { freshSiloPath } from "../storage/throwaway.js";
 
 /**
@@ -106,6 +107,9 @@ export async function testHost(
     },
     connectors: {
       pull: async () => ({ items: [], cursor: null }),
+      readChatExport: async () => {
+        throw new ToolError("unavailable", "The test host reads no files.");
+      },
     },
     privacy: {
       redact: (text) => {

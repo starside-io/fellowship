@@ -512,7 +512,12 @@ describe("the import tool", () => {
           decide: async () => false,
         },
         bus: { emit: () => undefined },
-        connectors: { pull: async () => ({ items: [] }) },
+        connectors: {
+          pull: async () => ({ items: [] }),
+          readChatExport: async () => {
+            throw new Error("The test host reads no files.");
+          },
+        },
         privacy: { redact: (text) => text },
         audit: { log: async () => undefined },
         settings: { get: async () => DEFAULT_CONFIG, set: async () => DEFAULT_CONFIG },
