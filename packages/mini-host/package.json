@@ -1,6 +1,6 @@
 {
   "name": "@fellowship/mini-host",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "The standalone host: the ports, POST /rpc, the media route and the stdio MCP server, in one Node process that owns the SQLite file.",
   "license": "Apache-2.0",
