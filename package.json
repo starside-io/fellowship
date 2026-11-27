@@ -1,6 +1,6 @@
 {
   "name": "fellowship",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "description": "Local-first tracker of the people in one person's life.",
   "license": "Apache-2.0",

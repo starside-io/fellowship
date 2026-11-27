@@ -1,6 +1,6 @@
 {
   "name": "fellowship",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "description": "The standalone app: the mini-host and the UI in one process.",
   "license": "Apache-2.0",
