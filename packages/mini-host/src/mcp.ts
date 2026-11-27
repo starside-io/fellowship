@@ -8,6 +8,7 @@ import type { ToolDefinition } from "@fellowship/core";
 
 import { startMiniHost, type MiniHost, type MiniHostOptions } from "./host.js";
 import { advertisedSchema } from "./mcp-schema.js";
+import { FELLOWSHIP_VERSION } from "./version.js";
 
 /**
  * The stdio MCP server: the second transport over the one registry.
@@ -38,7 +39,7 @@ function describe(tool: ToolDefinition<never, unknown>): string {
 
 export function createMcpServer(host: MiniHost): McpServer {
   const server = new McpServer(
-    { name: "fellowship", version: "0.0.4" },
+    { name: "fellowship", version: FELLOWSHIP_VERSION },
     {
       instructions: [
         "Fellowship tracks the people in one person's life: who they are, what they like, what to avoid, the occasions they shared, and how close each connection is.",

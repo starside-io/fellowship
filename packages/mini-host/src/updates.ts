@@ -13,6 +13,8 @@ import { homedir } from "node:os";
 import { basename, delimiter, dirname, join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { desktopAppStatus, installDesktopApp } from "./desktop-app.js";
+
 /**
  * Whether a newer release of the Claude Code plugin is out, and installing it.
  *
@@ -332,7 +334,13 @@ export interface InstallResult {
  * and says so.
  */
 export async function installUpdate(
-  options: { env?: NodeJS.ProcessEnv; run?: CommandRunner; claudePath?: string | null } = {},
+  options: {
+    env?: NodeJS.ProcessEnv;
+    run?: CommandRunner;
+    claudePath?: string | null;
+    /** Seams for the desktop app half, so a test downloads nothing. */
+    app?: Omit<Parameters<typeof installDesktopApp>[0], "version" | "env">;
+  } = {},
 ): Promise<InstallResult> {
   const env = options.env ?? process.env;
   const installed = readInstalledPlugin(env);
@@ -376,13 +384,21 @@ export async function installUpdate(
   }
 
   const removed = pruneOldVersions(env);
+  const notes = ["Updated. Restart Claude Code to load the new version."];
+  if (removed.length > 0) {
+    notes.push(`Removed ${removed.length} older ${removed.length === 1 ? "copy" : "copies"} of the plugin.`);
+  }
+
+  // The desktop app follows the plugin, but only where the owner installed it.
+  const updated = readInstalledPlugin(env);
+  if (updated && desktopAppStatus(env).version !== null) {
+    const app = await installDesktopApp({ ...options.app, version: updated.version, env });
+    notes.push(app.ok ? `Fellowship.app is now ${updated.version}; reopen it to load it.` : app.message);
+  }
+
   return {
     ok: true,
-    message: `Updated. Restart Claude Code to load the new version.${
-      removed.length > 0
-        ? ` Removed ${removed.length} older ${removed.length === 1 ? "copy" : "copies"} of the plugin.`
-        : ""
-    }`,
+    message: notes.join(" "),
     output: outputs.join("\n\n"),
     command,
   };

@@ -17,11 +17,14 @@ import {
   updateHostLock,
 } from "./host-lock.js";
 import { DraftError, draftFacts, draftSenders, draftSketch } from "./specialist.js";
+import { desktopAppStatus, installDesktopApp } from "./desktop-app.js";
 import { mediaRoutes } from "./media.js";
+import { FELLOWSHIP_VERSION } from "./version.js";
 import {
   UPDATES_SETTING,
   checkForUpdates,
   installUpdate,
+  readInstalledPlugin,
   type CommandRunner,
   type UpdateOptions,
 } from "./updates.js";
@@ -52,7 +55,11 @@ export const HOSTNAME_ENV = "FELLOWSHIP_HOST";
 export interface AppOptions {
   uiDir?: string;
   /** Seams for the update check, so a test reaches neither GitHub nor the claude CLI. */
-  updates?: UpdateOptions & { run?: CommandRunner; claudePath?: string | null };
+  updates?: UpdateOptions & {
+    run?: CommandRunner;
+    claudePath?: string | null;
+    app?: { unzip?: (zip: string, into: string) => Promise<void>; supported?: boolean };
+  };
 }
 
 export function createApp(host: MiniHost, options: AppOptions = {}): Hono {
@@ -308,7 +315,38 @@ export function createApp(host: MiniHost, options: AppOptions = {}): Hono {
     if (!context.req.header("content-type")?.startsWith("application/json")) {
       return context.json({ ok: false, message: "Expected a JSON request" }, 415);
     }
-    const result = await installUpdate(updates);
+    const result = await installUpdate({
+      ...updates,
+      app: { ...updates.app, ...(updates.fetch ? { fetch: updates.fetch } : {}) },
+    });
+    return context.json(result, result.ok ? 200 : 502);
+  });
+
+  /**
+   * Fellowship.app, installed on request: the build attached to the release
+   * that matches the installed plugin, or this host's own version.
+   */
+  const appEnv = updates.env ?? process.env;
+  const appVersion = () => readInstalledPlugin(appEnv)?.version ?? FELLOWSHIP_VERSION;
+
+  hostRoutes.get("/app", (context) =>
+    context.json({
+      ...desktopAppStatus(appEnv),
+      ...(updates.app?.supported === undefined ? {} : { supported: updates.app.supported }),
+      available: appVersion(),
+    }),
+  );
+
+  hostRoutes.post("/app/install", async (context) => {
+    if (!context.req.header("content-type")?.startsWith("application/json")) {
+      return context.json({ ok: false, message: "Expected a JSON request" }, 415);
+    }
+    const result = await installDesktopApp({
+      version: appVersion(),
+      env: appEnv,
+      ...(updates.fetch ? { fetch: updates.fetch } : {}),
+      ...updates.app,
+    });
     return context.json(result, result.ok ? 200 : 502);
   });
 

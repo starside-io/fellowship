@@ -35,3 +35,6 @@ adapters/**/*.bin
 
 # The npm package as assembled by scripts/pack-npm.mjs.
 .npm-package/
+
+# The app zip scripts/release-app.mjs uploads to a GitHub release.
+.release/

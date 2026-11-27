@@ -17,6 +17,7 @@
     "desktop": "pnpm --filter @fellowship/desktop app",
     "dev": "pnpm --filter @fellowship/ui dev",
     "mcp": "pnpm --filter fellowship start mcp",
+    "release:app": "node scripts/release-app.mjs",
     "start": "pnpm --filter fellowship start",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"

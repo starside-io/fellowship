@@ -240,9 +240,27 @@ session. The button runs `claude plugin marketplace update` and then
 `claude plugin update`, then removes the older copies Claude Code keeps in its
 plugin cache, and the new version loads when Claude Code restarts.
 
-To ship one: bump `version` in `.claude-plugin/plugin.json` and `package.json`,
-push, then publish a GitHub release tagged `v<version>`. Prereleases and
-drafts are never offered.
+To ship one: bump `version` in `.claude-plugin/plugin.json` and every
+`package.json`, commit, tag `v<version>`, push both, publish a GitHub release
+on that tag, then attach the desktop app:
+
+```bash
+pnpm release:app
+```
+
+It waits for the post-commit build, checks the app is the tagged version and
+was built from that commit, signs a copy of the bundle ad hoc, zips it with
+`ditto`, and uploads `Fellowship-<version>-macos-arm64.zip` and its `.sha256`
+to the release. Prereleases and drafts are never offered.
+
+## The desktop app from the plugin
+
+The plugin never builds Fellowship.app. `fellowship app install` (and the
+Settings button, and `/fellowship:open` after the owner says yes) downloads the
+zip attached to the release matching the installed plugin, refuses it unless
+its SHA-256 matches the published one, and puts it in `~/Applications`, or the
+folder `FELLOWSHIP_APP_DIR` names. A plugin update from the app's update button
+brings an installed app to the same version. Apple Silicon only.
 
 ## Install the plugin from a checkout
 

@@ -130,6 +130,15 @@ export interface UpdateStatus {
   command: string | null;
 }
 
+export interface DesktopAppStatus {
+  supported: boolean;
+  path: string;
+  /** The installed app's version, null when it is not installed. */
+  version: string | null;
+  /** The version an install would fetch. */
+  available: string;
+}
+
 export interface InstallResult {
   ok: boolean;
   message: string;
@@ -180,6 +189,23 @@ export const host = {
   updates: (refresh = false) => hostGet<UpdateStatus>(`/updates${refresh ? "?refresh=1" : ""}`),
 
   setUpdates: (enabled: boolean) => hostPost<UpdateStatus>("/updates/settings", { enabled }),
+
+  app: () => hostGet<DesktopAppStatus>("/app"),
+
+  /** Downloads the desktop app from the release; the answer says what happened either way. */
+  async installApp(): Promise<{ ok: boolean; message: string; version: string | null }> {
+    const response = await fetch(`${BASE}/host/app/install`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    const body = (await response.json().catch(() => null)) as {
+      ok: boolean;
+      message: string;
+      version: string | null;
+    } | null;
+    return body ?? { ok: false, message: `The host answered ${response.status}`, version: null };
+  },
 
   /** Answers with what happened either way, so a failure can say what to run instead. */
   async installUpdate(): Promise<InstallResult> {

@@ -1,31 +1,34 @@
 ---
-description: Start the Fellowship mini-host and open the UI
+description: Open Fellowship, in its desktop app or in the browser
 argument-hint: [person name to open directly]
 allowed-tools:
   - Read
   - Bash
 ---
 
-Start Fellowship and open it in the browser. With `$ARGUMENTS`, open that
-person's page directly.
+Open Fellowship for the user. With `$ARGUMENTS`, find that person too.
 
-## State
-
-The mini-host is live. The UI is not: it arrives at **M5** in
-[`docs/SPEC.md`](../docs/SPEC.md). Until then this command starts the host and
-reports where it is, and there is no dashboard to open. Say that in one line
-rather than opening a browser at a page that does not exist.
+The CLI is `node "${CLAUDE_PLUGIN_ROOT}/apps/fellowship/dist/cli.js"`, called
+`fellowship` below.
 
 ## What this command does
 
-1. Check whether the host is already up before starting a second one:
-   `curl -s localhost:4319/health`. If it answers, reuse it.
-2. Otherwise start it from the repo root: `pnpm build && pnpm start serve`,
-   or `node apps/fellowship/dist/cli.js serve` once built. It listens on 4319
-   unless `FELLOWSHIP_PORT` says otherwise.
-3. Report the URL, both file paths and the tool count, which `/health` returns.
-4. With `$ARGUMENTS`, resolve the name with `people_search` and report what is
-   stored rather than opening a page.
+1. `fellowship app status`.
+   - **The app is installed:** `fellowship app open`. It starts its own host,
+     or reuses one already running on the same code.
+   - **Not installed, on an Apple Silicon Mac:** say in one line that the
+     desktop app is a download of about 110 MB from the Fellowship release on
+     GitHub, and ask whether to install it. On yes: `fellowship app install`,
+     then `fellowship app open`. On no, go to step 2.
+   - **Not available** (any other machine), or the install failed: step 2.
+2. The browser. Check for a host first: `curl -s localhost:4319/health`. If it
+   answers, reuse it. Otherwise start one in the background with
+   `fellowship serve`, then open http://localhost:4319.
+3. With `$ARGUMENTS`, resolve the name with `people_search` and say what is
+   stored, so the user knows which page to look at.
+
+Never install the app without the user's yes in this conversation: it is a
+download, and the only one this command makes.
 
 ## Port and process rules
 
@@ -35,7 +38,7 @@ rather than opening a browser at a page that does not exist.
   PID with any connection to that port, browser tabs included, and piping that
   into `kill -9` takes the user's browser down with the server.
 - Confirm what is about to be killed first:
-  `lsof -iTCP:PORT -sTCP:LISTEN -n -P`. If it is not the Fellowship dev server,
-  do not kill it, say what is there.
-- One mini-host at a time. It is the single writer to `fellowship.db`, and two
-  of them pointed at one SQLite file is how a local-first app corrupts itself.
+  `lsof -iTCP:PORT -sTCP:LISTEN -n -P`. If it is not the Fellowship host, do
+  not kill it, say what is there.
+- One host at a time. It is the single writer to `fellowship.db`, and two of
+  them pointed at one SQLite file is how a local-first app corrupts itself.

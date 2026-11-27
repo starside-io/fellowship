@@ -8,6 +8,11 @@ import { storage } from "@fellowship/core";
 import {
   HostAlreadyRunning,
   checkForUpdates,
+  desktopAppStatus,
+  installDesktopApp,
+  openDesktopApp,
+  readInstalledPlugin,
+  FELLOWSHIP_VERSION,
   formatVerify,
   healthPid,
   hostLockPath,
@@ -56,6 +61,10 @@ const USAGE = `fellowship <command>
         [--replace --yes]  Wipe first. Names what it will destroy, and refuses
                            without --yes.
   export <file>            Write the whole silo to a snapshot file.
+  app [status|install|open]
+                           Fellowship.app: whether it is installed, download
+                           the build attached to this version's release into
+                           ~/Applications, or open it. Apple Silicon only.
   reindex                  Rebuild the three search indexes from the rows they
                            shadow. The triggers keep them current, so this is
                            for a file restored from a backup taken mid write.
@@ -136,6 +145,10 @@ async function main(argv: string[]): Promise<number> {
 
     case "restart": {
       return restartHost();
+    }
+
+    case "app": {
+      return desktopApp(argv[1] ?? "status");
     }
 
     case "whoami": {
@@ -413,6 +426,47 @@ async function whoami(hook: boolean): Promise<number> {
     ].join("\n"),
   );
   return 0;
+}
+
+/**
+ * The desktop app, for /fellowship:open. Installing downloads the build
+ * attached to the GitHub release for the installed plugin's version, or this
+ * build's own, and checks its hash before it replaces anything.
+ */
+async function desktopApp(action: string): Promise<number> {
+  const status = desktopAppStatus();
+  const version = readInstalledPlugin()?.version ?? FELLOWSHIP_VERSION;
+
+  switch (action) {
+    case "status": {
+      process.stdout.write(
+        [
+          `app        ${status.version ? `${status.version} at ${status.path}` : "not installed"}`,
+          `available  ${status.supported ? version : "none: the app is built for Apple Silicon Macs only"}`,
+          "",
+        ].join("\n"),
+      );
+      return 0;
+    }
+    case "install": {
+      process.stdout.write(`Downloading Fellowship.app ${version} from its GitHub release...\n`);
+      const result = await installDesktopApp({ version });
+      process.stdout.write(`${result.message}\n`);
+      return result.ok ? 0 : 1;
+    }
+    case "open": {
+      if (!status.version) {
+        process.stdout.write("Fellowship.app is not installed. Run: fellowship app install\n");
+        return 1;
+      }
+      await openDesktopApp();
+      process.stdout.write(`Opened Fellowship.app ${status.version}.\n`);
+      return 0;
+    }
+    default:
+      process.stderr.write(`Unknown app action "${action}". Use status, install or open.\n`);
+      return 2;
+  }
 }
 
 /**

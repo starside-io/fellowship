@@ -1,7 +1,7 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ArrowUpCircle, RefreshCw } from "lucide-react";
 
-import { host, type InstallResult, type UpdateStatus } from "@/client";
+import { host, type DesktopAppStatus, type InstallResult, type UpdateStatus } from "@/client";
 import { SectionCard } from "@/ds/index";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
@@ -219,6 +219,8 @@ export function UpdatesCard() {
             {result.message}
           </p>
         ) : null}
+        <DesktopAppLine />
+
         {result && !result.ok && result.output ? (
           <pre className="bg-muted ml-6 max-h-48 overflow-auto rounded-md p-2 text-xs whitespace-pre-wrap">
             {result.output}
@@ -226,5 +228,58 @@ export function UpdatesCard() {
         ) : null}
       </div>
     </SectionCard>
+  );
+}
+
+/**
+ * Fellowship.app: installed on request from the release, and kept in step by
+ * the plugin update above. Hidden on a Mac it does not run on.
+ */
+function DesktopAppLine() {
+  const [app, setApp] = useState<DesktopAppStatus | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    void host.app().then(setApp).catch(() => setApp(null));
+  }, []);
+
+  if (!app?.supported) return null;
+
+  async function installApp() {
+    setInstalling(true);
+    setMessage(null);
+    const answer = await host
+      .installApp()
+      .catch((error: unknown) => ({ ok: false, message: String(error), version: null }));
+    setMessage({ ok: answer.ok, text: answer.message });
+    setInstalling(false);
+    void host.app().then(setApp).catch(() => undefined);
+  }
+
+  const behind = app.version !== null && app.version !== app.available;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-6">
+      <p className="text-muted-foreground text-sm">
+        {app.version
+          ? `Fellowship.app ${app.version} is in ${app.path.replace(/\/Fellowship\.app$/, "")}.`
+          : "The desktop app is not installed. It opens Fellowship in its own window, without a browser."}
+      </p>
+      {app.version === null || behind ? (
+        <Button size="sm" variant="outline" disabled={installing} onClick={() => void installApp()}>
+          {installing
+            ? "Downloading"
+            : app.version === null
+              ? `Install the app (${app.available})`
+              : `Update the app to ${app.available}`}
+        </Button>
+      ) : null}
+      {message ? (
+        <span className={message.ok ? "text-positive text-sm" : "text-negative text-sm"}>
+          {message.text}
+        </span>
+      ) : null}
+    </div>
   );
 }
