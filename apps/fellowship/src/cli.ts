@@ -11,7 +11,6 @@ import {
   desktopAppStatus,
   installDesktopApp,
   openDesktopApp,
-  readInstalledPlugin,
   FELLOWSHIP_VERSION,
   formatVerify,
   healthPid,
@@ -430,12 +429,12 @@ async function whoami(hook: boolean): Promise<number> {
 
 /**
  * The desktop app, for /fellowship:open. Installing downloads the build
- * attached to the GitHub release for the installed plugin's version, or this
- * build's own, and checks its hash before it replaces anything.
+ * attached to the GitHub release for this build's version, and checks its
+ * hash before it replaces anything.
  */
 async function desktopApp(action: string): Promise<number> {
   const status = desktopAppStatus();
-  const version = readInstalledPlugin()?.version ?? FELLOWSHIP_VERSION;
+  const version = FELLOWSHIP_VERSION;
 
   switch (action) {
     case "status": {

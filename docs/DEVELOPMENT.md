@@ -257,7 +257,7 @@ to the release. Prereleases and drafts are never offered.
 
 The plugin never builds Fellowship.app. `fellowship app install` (and the
 Settings button, and `/fellowship:open` after the owner says yes) downloads the
-zip attached to the release matching the installed plugin, refuses it unless
+zip attached to the release matching the running version, refuses it unless
 its SHA-256 matches the published one, and puts it in `~/Applications`, or the
 folder `FELLOWSHIP_APP_DIR` names. A plugin update from the app's update button
 brings an installed app to the same version. Apple Silicon only.

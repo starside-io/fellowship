@@ -1,10 +1,15 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { createMcpServer, mcpName } from "../src/mcp.js";
+import { createMcpServer, mcpName, type McpServerOptions } from "../src/mcp.js";
 import { seedPerson, seedSelf, throwawayHost } from "./harness.js";
 import type { MiniHost } from "../src/host.js";
+import { FELLOWSHIP_VERSION } from "../src/version.js";
 
 /**
  * The milestone's own test: an assistant drives Fellowship with no UI at all.
@@ -13,8 +18,8 @@ import type { MiniHost } from "../src/host.js";
  * so the gates hold on this side too.
  */
 
-async function connect(host: MiniHost) {
-  const server = createMcpServer(host);
+async function connect(host: MiniHost, options: McpServerOptions = {}) {
+  const server = createMcpServer(host, options);
   const client = new Client({ name: "test-assistant", version: "0.0.1" });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
 
@@ -30,12 +35,13 @@ function payloadOf(result: unknown): unknown {
 }
 
 describe("the stdio server", () => {
-  it("advertises all 42 tools, with dots mapped to underscores", async () => {
+  it("advertises all 42 people tools and the 3 app tools, with dots mapped to underscores", async () => {
     const host = await throwawayHost();
     const { client, close } = await connect(host);
     try {
       const listed = await client.listTools();
-      expect(listed.tools).toHaveLength(42);
+      expect(listed.tools).toHaveLength(45);
+      expect(listed.tools.filter((tool) => tool.name.startsWith("people_"))).toHaveLength(42);
 
       const names = listed.tools.map((tool) => tool.name);
       expect(names).toContain("people_search");
@@ -95,7 +101,7 @@ describe("the stdio server", () => {
 
       // Only a tool that really takes nothing lists nothing.
       const empty = listed.tools
-        .filter((tool) => fields(tool.name).length === 0)
+        .filter((tool) => tool.name.startsWith("people_") && fields(tool.name).length === 0)
         .map((tool) => tool.name);
       for (const name of empty) {
         const definition = host.api.tools.find((tool) => mcpName(tool.name) === name)!;
@@ -138,6 +144,73 @@ describe("the stdio server", () => {
       // A tool with nothing required takes no arguments at all.
       const self = await client.callTool({ name: "people_self", arguments: {} });
       expect(self.isError).toBeFalsy();
+    } finally {
+      await close();
+      await host.close();
+    }
+  });
+
+  it("opens, and installs on a yes only, the desktop app", async () => {
+    const host = await throwawayHost();
+    const dir = mkdtempSync(join(tmpdir(), "fellowship-apps-"));
+    const opened: string[] = [];
+    const { client, close } = await connect(host, {
+      app: {
+        env: { FELLOWSHIP_APP_DIR: dir, CLAUDE_CONFIG_DIR: join(dir, "no-claude") },
+        supported: true,
+        open: async () => void opened.push("open"),
+        // A stand in for the release: the "download" unpacks a bundle at this build's version.
+        fetch: (async (url: string | URL | Request) => {
+          const href = String(url);
+          if (href.includes("/releases/tags/")) {
+            const name = `Fellowship-${FELLOWSHIP_VERSION}-macos-arm64.zip`;
+            return new Response(
+              JSON.stringify({
+                assets: [
+                  { name, browser_download_url: "https://dl/zip" },
+                  { name: `${name}.sha256`, browser_download_url: "https://dl/sha" },
+                ],
+              }),
+            );
+          }
+          if (href === "https://dl/zip") return new Response("zip");
+          return new Response(createHash("sha256").update("zip").digest("hex"));
+        }) as typeof fetch,
+        unzip: async (_zip, into) => {
+          mkdirSync(join(into, "Fellowship.app", "Contents"), { recursive: true });
+          writeFileSync(
+            join(into, "Fellowship.app", "Contents", "Info.plist"),
+            `<key>CFBundleShortVersionString</key><string>${FELLOWSHIP_VERSION}</string>`,
+          );
+        },
+      },
+    });
+    try {
+      const before = payloadOf(await client.callTool({ name: "app_open", arguments: {} })) as {
+        opened: boolean;
+        message: string;
+      };
+      expect(before.opened).toBe(false);
+      expect(before.message).toMatch(/not installed/);
+      expect(opened).toEqual([]);
+
+      // No yes, no download.
+      const refused = await client.callTool({ name: "app_install", arguments: {} });
+      expect(refused.isError).toBe(true);
+
+      const installed = await client.callTool({
+        name: "app_install",
+        arguments: { confirmedByUser: true },
+      });
+      expect(installed.isError).toBeFalsy();
+      expect(payloadOf(installed)).toMatchObject({ ok: true, version: FELLOWSHIP_VERSION });
+
+      const status = payloadOf(await client.callTool({ name: "app_status", arguments: {} }));
+      expect(status).toMatchObject({ version: FELLOWSHIP_VERSION, behind: false });
+
+      const after = payloadOf(await client.callTool({ name: "app_open", arguments: {} }));
+      expect(after).toMatchObject({ opened: true });
+      expect(opened).toEqual(["open"]);
     } finally {
       await close();
       await host.close();

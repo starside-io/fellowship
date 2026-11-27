@@ -24,7 +24,6 @@ import {
   UPDATES_SETTING,
   checkForUpdates,
   installUpdate,
-  readInstalledPlugin,
   type CommandRunner,
   type UpdateOptions,
 } from "./updates.js";
@@ -324,10 +323,10 @@ export function createApp(host: MiniHost, options: AppOptions = {}): Hono {
 
   /**
    * Fellowship.app, installed on request: the build attached to the release
-   * that matches the installed plugin, or this host's own version.
+   * that matches this host's own version.
    */
   const appEnv = updates.env ?? process.env;
-  const appVersion = () => readInstalledPlugin(appEnv)?.version ?? FELLOWSHIP_VERSION;
+  const appVersion = () => FELLOWSHIP_VERSION;
 
   hostRoutes.get("/app", (context) =>
     context.json({

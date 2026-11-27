@@ -2,11 +2,13 @@ import { pathToFileURL } from "node:url";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 
 import { tools as coreTools } from "@fellowship/core";
 import type { ToolDefinition } from "@fellowship/core";
 
 import { startMiniHost, type MiniHost, type MiniHostOptions } from "./host.js";
+import { desktopAppStatus, installDesktopApp, openDesktopApp } from "./desktop-app.js";
 import { advertisedSchema } from "./mcp-schema.js";
 import { FELLOWSHIP_VERSION } from "./version.js";
 
@@ -37,7 +39,18 @@ function describe(tool: ToolDefinition<never, unknown>): string {
   return `${tool.summary}\n\n${KIND_NOTE[tool.kind] ?? ""}`.trim();
 }
 
-export function createMcpServer(host: MiniHost): McpServer {
+/** Seams for the desktop app tools, so a test downloads and opens nothing. */
+export interface McpServerOptions {
+  app?: {
+    env?: NodeJS.ProcessEnv;
+    fetch?: typeof fetch;
+    unzip?: (zip: string, into: string) => Promise<void>;
+    supported?: boolean;
+    open?: () => Promise<void>;
+  };
+}
+
+export function createMcpServer(host: MiniHost, options: McpServerOptions = {}): McpServer {
   const server = new McpServer(
     { name: "fellowship", version: FELLOWSHIP_VERSION },
     {
@@ -47,6 +60,7 @@ export function createMcpServer(host: MiniHost): McpServer {
         "Nothing you write is confirmed. The user confirms, in the app.",
         "people_log_interaction returns unmatched names rather than inventing a person. Resolve them and call it again.",
         "A sketch holds observed behaviour with a quote or a number behind each claim. No diagnosis, no personality typing: those drafts are refused.",
+        "To open the Fellowship window, call app_open. app_install downloads the desktop app, and only after the user said yes.",
       ].join(" "),
     },
   );
@@ -85,7 +99,113 @@ export function createMcpServer(host: MiniHost): McpServer {
     );
   }
 
+  registerAppTools(server, options.app ?? {});
   return server;
+}
+
+function text(value: unknown, isError = false) {
+  return {
+    ...(isError ? { isError: true } : {}),
+    content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
+  };
+}
+
+/**
+ * Fellowship.app, from a chat. A client that only speaks MCP, such as the
+ * Claude desktop app, has no slash commands, so /fellowship:open cannot run
+ * there. These three do the same job. They belong to this server rather than
+ * to the people module: the module never reaches the network, and installing
+ * is a download from the GitHub release, made only after the user said yes.
+ */
+function registerAppTools(server: McpServer, seams: NonNullable<McpServerOptions["app"]>): void {
+  const env = seams.env ?? process.env;
+  // The app that matches the code answering here, not whatever plugin record is on disk.
+  const available = () => FELLOWSHIP_VERSION;
+  const status = () => {
+    const app = desktopAppStatus(env);
+    const supported = seams.supported ?? app.supported;
+    return {
+      ...app,
+      supported,
+      available: available(),
+      behind: app.version !== null && app.version !== available(),
+    };
+  };
+
+  server.registerTool(
+    "app_status",
+    {
+      title: "Desktop app status",
+      description:
+        "Whether Fellowship.app is installed on this Mac, which version, and which version an install or update would bring. Reads nothing from the network.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true },
+    },
+    async () => text(status()),
+  );
+
+  server.registerTool(
+    "app_install",
+    {
+      title: "Install or update the desktop app",
+      description:
+        "Downloads Fellowship.app (about 110 MB) from the GitHub release matching this server's version, checks it against the published SHA-256, and puts it in ~/Applications, replacing an older copy. Apple Silicon Macs only. Call it only after the user said yes to this download in the conversation, and set confirmedByUser: true.",
+      inputSchema: z.object({ confirmedByUser: z.literal(true) }),
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    },
+    async () => {
+      const result = await installDesktopApp({
+        version: available(),
+        env,
+        ...(seams.fetch ? { fetch: seams.fetch } : {}),
+        ...(seams.unzip ? { unzip: seams.unzip } : {}),
+        ...(seams.supported === undefined ? {} : { supported: seams.supported }),
+      });
+      return text(result, !result.ok);
+    },
+  );
+
+  server.registerTool(
+    "app_open",
+    {
+      title: "Open the desktop app",
+      description:
+        "Opens Fellowship.app. When it is not installed, or older than this version, it says so: ask the user, then call app_install with confirmedByUser: true.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    async () => {
+      const app = status();
+      if (!app.supported) {
+        return text({
+          opened: false,
+          message:
+            "The desktop app is built for Apple Silicon Macs only. Run `fellowship serve` and open http://localhost:4319 in a browser instead.",
+        });
+      }
+      if (app.version === null) {
+        return text({
+          opened: false,
+          message: `Fellowship.app is not installed. Ask the user whether to download it (about 110 MB, version ${app.available}), then call app_install with confirmedByUser: true.`,
+        });
+      }
+      try {
+        await (seams.open ?? (() => openDesktopApp(env)))();
+      } catch (error) {
+        return text(
+          { opened: false, message: `Could not open ${app.path}: ${error instanceof Error ? error.message : String(error)}` },
+          true,
+        );
+      }
+      return text({
+        opened: true,
+        version: app.version,
+        message: app.behind
+          ? `Opened Fellowship.app ${app.version}. Version ${app.available} is available: offer to update it with app_install.`
+          : `Opened Fellowship.app ${app.version}.`,
+      });
+    },
+  );
 }
 
 /** Opens the files, attaches to stdio, and stays up until the pipe closes. */
