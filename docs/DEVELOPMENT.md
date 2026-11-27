@@ -237,7 +237,8 @@ compares the release tag with the plugin version Claude Code recorded in
 `~/.claude/plugins/installed_plugins.json`. A newer release shows an update
 button in the app's rail, and the SessionStart hook offers it once per
 session. The button runs `claude plugin marketplace update` and then
-`claude plugin update`, and the new version loads when Claude Code restarts.
+`claude plugin update`, then removes the older copies Claude Code keeps in its
+plugin cache, and the new version loads when Claude Code restarts.
 
 To ship one: bump `version` in `.claude-plugin/plugin.json` and `package.json`,
 push, then publish a GitHub release tagged `v<version>`. Prereleases and

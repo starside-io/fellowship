@@ -115,7 +115,7 @@ export function UpdateButton() {
           </span>
           <span className="text-muted-foreground block text-xs">
             {installing
-              ? "This can take a minute."
+              ? "This can take a few minutes."
               : `${status?.installed?.version ?? "?"} to ${latest ?? "?"}, click to install`}
           </span>
         </span>

@@ -116,7 +116,13 @@ async function hostPost<T>(path: string, body: unknown): Promise<T> {
 /** The plugin update check. Mirrors UpdateStatus in mini-host's updates.ts. */
 export interface UpdateStatus {
   enabled: boolean;
-  installed: { pluginId: string; marketplace: string; version: string; scope: string } | null;
+  installed: {
+    pluginId: string;
+    marketplace: string;
+    version: string;
+    scope: string;
+    installPath: string | null;
+  } | null;
   latest: { version: string; tag: string; url: string; publishedAt: string | null } | null;
   updateAvailable: boolean;
   checkedAt: string | null;

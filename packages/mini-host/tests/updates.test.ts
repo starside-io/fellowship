@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -8,8 +8,10 @@ import {
   RELEASES_URL,
   UPDATES_SETTING,
   checkForUpdates,
+  commandRunner,
   compareVersions,
   installUpdate,
+  pruneOldVersions,
   readInstalledPlugin,
   readUpdatesEnabled,
   type CommandRunner,
@@ -74,6 +76,7 @@ describe("readInstalledPlugin", () => {
       marketplace: "starside",
       version: "0.0.1",
       scope: "user",
+      installPath: "/x",
     });
   });
 
@@ -205,6 +208,84 @@ describe("installUpdate", () => {
       false,
     );
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe("pruneOldVersions", () => {
+  function cacheWith(installed: string, others: string[]) {
+    const dir = mkdtempSync(join(tmpdir(), "fellowship-claude-"));
+    const versions = join(dir, "plugins", "cache", "starside", "fellowship");
+    for (const name of [installed, ...others]) {
+      mkdirSync(join(versions, name, "node_modules"), { recursive: true });
+      writeFileSync(join(versions, name, "package.json"), "{}");
+    }
+    writeFileSync(
+      join(dir, "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 2,
+        plugins: {
+          "fellowship@starside": [
+            { scope: "user", version: installed, installPath: join(versions, installed) },
+          ],
+        },
+      }),
+    );
+    return { env: { CLAUDE_CONFIG_DIR: dir, PATH: "" } as NodeJS.ProcessEnv, versions };
+  }
+
+  it("runs after a good install and keeps only the installed version", async () => {
+    const { env, versions } = cacheWith("0.0.3", ["0.0.1", "0.0.2", "0.0.3.tmp~735c74d2"]);
+    const run: CommandRunner = async () => ({ code: 0, output: "" });
+
+    const result = await installUpdate({ env, run, claudePath: "/bin/claude" });
+
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain("Removed 3 older copies");
+    expect(readdirSync(versions)).toEqual(["0.0.3"]);
+  });
+
+  it("leaves everything alone after a failed install", async () => {
+    const { env, versions } = cacheWith("0.0.3", ["0.0.2"]);
+    const run: CommandRunner = async () => ({ code: 1, output: "no" });
+
+    await installUpdate({ env, run, claudePath: "/bin/claude" });
+    expect(readdirSync(versions).sort()).toEqual(["0.0.2", "0.0.3"]);
+  });
+
+  it("touches nothing outside Claude Code's cache for this plugin", () => {
+    const outside = mkdtempSync(join(tmpdir(), "fellowship-checkout-"));
+    mkdirSync(join(outside, "fellowship", "0.0.3"), { recursive: true });
+    mkdirSync(join(outside, "fellowship", "keep-me"), { recursive: true });
+    const dir = mkdtempSync(join(tmpdir(), "fellowship-claude-"));
+    mkdirSync(join(dir, "plugins"));
+    writeFileSync(
+      join(dir, "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        plugins: {
+          "fellowship@local": [
+            { scope: "user", version: "0.0.3", installPath: join(outside, "fellowship", "0.0.3") },
+          ],
+        },
+      }),
+    );
+
+    expect(pruneOldVersions({ CLAUDE_CONFIG_DIR: dir })).toEqual([]);
+    expect(readdirSync(join(outside, "fellowship")).sort()).toEqual(["0.0.3", "keep-me"]);
+  });
+});
+
+describe("commandRunner", () => {
+  it("says it ran out of time rather than failing with no reason", async () => {
+    const run = commandRunner(200);
+    const result = await run("/bin/sh", ["-c", "echo Checking; sleep 5"], process.env);
+    expect(result.code).not.toBe(0);
+    expect(result.output).toContain("Checking");
+    expect(result.output).toMatch(/Stopped after 200 ms with no answer/);
+  });
+
+  it("hands back what a finished command printed", async () => {
+    const result = await commandRunner()("/bin/sh", ["-c", "echo done"], process.env);
+    expect(result).toEqual({ code: 0, output: "done" });
   });
 });
 

@@ -1,7 +1,16 @@
 import { execFile } from "node:child_process";
-import { accessSync, constants, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  accessSync,
+  constants,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
+import { basename, delimiter, dirname, join, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 /**
@@ -28,7 +37,12 @@ const CHECK_EVERY_MS = 24 * 60 * 60_000;
 /** A failed check is retried sooner than a good one is repeated. */
 const RETRY_FAILED_MS = 60 * 60_000;
 const FETCH_TIMEOUT_MS = 4_000;
-const COMMAND_TIMEOUT_MS = 180_000;
+/**
+ * A plugin installed from a local folder is copied whole on every update,
+ * node_modules and build output included: several gigabytes for a checkout
+ * that has been built. That takes minutes, not seconds.
+ */
+const COMMAND_TIMEOUT_MS = 20 * 60_000;
 
 export interface InstalledPlugin {
   /** The id Claude Code knows it by, such as fellowship@starside. */
@@ -36,6 +50,8 @@ export interface InstalledPlugin {
   marketplace: string;
   version: string;
   scope: string;
+  /** Where Claude Code unpacked this version, under its plugin cache. */
+  installPath: string | null;
 }
 
 export interface LatestRelease {
@@ -96,6 +112,7 @@ export function readInstalledPlugin(env: NodeJS.ProcessEnv = process.env): Insta
         marketplace,
         version: entry["version"],
         scope: typeof entry["scope"] === "string" ? entry["scope"] : "user",
+        installPath: typeof entry["installPath"] === "string" ? entry["installPath"] : null,
       });
     }
   }
@@ -254,22 +271,28 @@ export type CommandRunner = (
   env: NodeJS.ProcessEnv,
 ) => Promise<{ code: number; output: string }>;
 
-const runCommand: CommandRunner = (file, args, env) =>
-  new Promise((resolve) => {
-    const child = execFile(
-      file,
-      args,
-      { env, timeout: COMMAND_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
-      (error, stdout, stderr) => {
-        const output = `${stdout}${stderr}`.trim();
-        const code =
-          error === null ? 0 : typeof error.code === "number" ? error.code : 1;
-        resolve({ code, output: output || (error?.message ?? "") });
-      },
-    );
-    // No terminal to answer a prompt from. Anything that would ask is refused instead.
-    child.stdin?.end();
-  });
+/** Runs a command with no terminal attached, and says so plainly when it runs out of time. */
+export function commandRunner(timeoutMs: number = COMMAND_TIMEOUT_MS): CommandRunner {
+  return (file, args, env) =>
+    new Promise((resolve) => {
+      const child = execFile(
+        file,
+        args,
+        { env, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
+        (error, stdout, stderr) => {
+          let output = `${stdout}${stderr}`.trim();
+          if (error && (error.killed || error.signal)) {
+            const minutes = Math.round(timeoutMs / 60_000);
+            output = `${output}\nStopped after ${minutes > 0 ? `${minutes} minutes` : `${timeoutMs} ms`} with no answer.`.trim();
+          }
+          const code = error === null ? 0 : typeof error.code === "number" ? error.code : 1;
+          resolve({ code, output: output || (error?.message ?? "") });
+        },
+      );
+      // No terminal to answer a prompt from. Anything that would ask is refused instead.
+      child.stdin?.end();
+    });
+}
 
 /**
  * Claude Code's CLI. A host started by the desktop app inherits a short PATH,
@@ -333,7 +356,7 @@ export async function installUpdate(
     };
   }
 
-  const run = options.run ?? runCommand;
+  const run = options.run ?? commandRunner();
   const steps: string[][] = [
     ["plugin", "marketplace", "update", installed.marketplace],
     ["plugin", "update", installed.pluginId, "--scope", installed.scope],
@@ -352,10 +375,48 @@ export async function installUpdate(
     }
   }
 
+  const removed = pruneOldVersions(env);
   return {
     ok: true,
-    message: "Updated. Restart Claude Code to load the new version.",
+    message: `Updated. Restart Claude Code to load the new version.${
+      removed.length > 0
+        ? ` Removed ${removed.length} older ${removed.length === 1 ? "copy" : "copies"} of the plugin.`
+        : ""
+    }`,
     output: outputs.join("\n\n"),
     command,
   };
+}
+
+/**
+ * Claude Code keeps every version it ever unpacked, each a full copy, and a
+ * plugin installed from a local folder copies node_modules and build output
+ * along with it. Once the new version is in place, the others go: the older
+ * versions and any half finished copy an interrupted update left behind.
+ *
+ * Only folders beside the installed one, inside Claude Code's own plugin
+ * cache, under a folder named after this plugin, are touched.
+ */
+export function pruneOldVersions(env: NodeJS.ProcessEnv = process.env): string[] {
+  const installed = readInstalledPlugin(env);
+  if (!installed?.installPath) return [];
+
+  const cacheRoot = resolve(claudeConfigDir(env), "plugins", "cache");
+  const current = resolve(installed.installPath);
+  const versionsDir = dirname(current);
+  if (basename(versionsDir) !== "fellowship" || !versionsDir.startsWith(cacheRoot + sep)) return [];
+  if (!existsSync(current)) return [];
+
+  const removed: string[] = [];
+  for (const entry of readdirSync(versionsDir, { withFileTypes: true })) {
+    const path = join(versionsDir, entry.name);
+    if (!entry.isDirectory() || path === current) continue;
+    try {
+      rmSync(path, { recursive: true, force: true });
+      removed.push(entry.name);
+    } catch {
+      // In use or not ours to remove: it stays, and the next update tries again.
+    }
+  }
+  return removed;
 }
