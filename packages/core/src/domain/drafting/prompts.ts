@@ -251,7 +251,7 @@ export function recapPrompt(context: RecapPromptContext): {
       "An event is something that happened, not something talked about. Plans that were made and then happened count once, on the day they happened. Plans that never happened do not count. Small talk is not an event.",
       "A mention is not presence. Only list someone as a participant if the messages show they were there. The owner is a participant only when they were there too.",
       "Never add a bystander to a CONFLICT. A conflict is between the people who had it.",
-      "Sentiment runs from -2 (bad) to 2 (great). Weight runs from 1 (ordinary) to 3 (a milestone). Most things are weight 1.",
+      "Sentiment runs from -2 (bad) to 2 (great). Weight runs from 1 (ordinary) to 3 (a milestone). Most things are weight 1. durationDays is how many days it lasted: 1 for a meal or a night out, the number of days for a trip or a stay together.",
       "A preference needs the person's own words or plain behaviour behind it. Something they tried once is not an interest. An allergy is not a dislike.",
       "Skip anything already in the known events or the known preferences. The module checks again, but a duplicate you leave out is one the owner never has to discard.",
       "Every event and every preference carries a quote from the messages, copied exactly.",

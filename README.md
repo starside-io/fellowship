@@ -94,7 +94,7 @@ done; `/mcp` reconnects them without starting a new session.
 | `/fellowship:personalities [name]` | Score or refresh personality radars from the chats |
 | `/fellowship:open [name]` | Start Fellowship and say where it is |
 
-The assistant gets 42 typed tools: reading and searching people, logging
+The assistant gets 43 typed tools: reading and searching people, logging
 occasions, importing chats, and drafting. Three rules hold whatever model is
 driving:
 

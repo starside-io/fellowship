@@ -117,7 +117,7 @@ checksum is recorded in every silo that ran it.
 ## Layout
 
 ```
-packages/core/         the module: schemas, domain, the 42 tools, the silo schema
+packages/core/         the module: schemas, domain, the 43 tools, the silo schema
 packages/mini-host/    the host: ports, /rpc, the media route, the lock, the stdio MCP server
 packages/ui/           the standalone shell and the design system
 packages/graph/        the force directed view, from the people.graph payload alone
@@ -153,7 +153,7 @@ separated). The path is resolved through symlinks before that check.
 
 ## The tool surface
 
-42 tools in four classes, listed in `module.json` and by `pnpm start tools`.
+43 tools in four classes, listed in `module.json` and by `pnpm start tools`.
 
 | Class | Rule |
 | --- | --- |
@@ -169,10 +169,15 @@ same registry, the same validation and the same audit line.
 
 - **The library never calls a model.** Whatever model drives an assistant reads
   the material through the drafting tools and proposes back through them.
-- **Link scores are derived, never written by hand.**
-  `contribution = effectiveSentiment * weight * 0.5^(daysSince / 180)`, then
-  `clamp(round(5 * sum), -100, 100)`. Six month half-life. Cached and
-  recomputed on every occasion mutation.
+- **Link scores are derived, never written by hand.** Per shared occasion,
+  `contribution = sentiment * weight * (1 + log2(days)) * kind * routine * 0.5^(daysSinceItEnded / halfLife)`,
+  then `clamp(round(5 * sum), -100, 100)`. `kind` is 0.25 for WORK. `routine`
+  is 1 for the first three occasions with someone in 30 days, then `(3/n)^2`.
+  `halfLife` is 180 days for a FRIEND, twice that for FAMILY and PARTNER, 4/3
+  for CLOSE_FRIEND, 2/3 for ACQUAINTANCE and KNOWS_OF, half for COLLEAGUE: the
+  tie changes how long time together counts, never adds points by itself.
+  Cached, recomputed on every occasion or tie change, and rebuilt once by the
+  first host on a new `SCORING_VERSION`.
 - **An occasion carries everyone who was there.** Links only exist between
   people who share an occasion.
 - **Anything an assistant drafts lands in Review.** Only the owner confirms,

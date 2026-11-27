@@ -34,6 +34,15 @@ export const weightSchema = intFromInput.refine(
   "Weight runs from 1 to 3",
 );
 
+/**
+ * How many days an occasion lasted. A coffee is 1; two weeks staying with
+ * someone is 14. Closeness grows with it, with diminishing returns.
+ */
+export const durationDaysSchema = intFromInput.refine(
+  (value) => value >= 1 && value <= 365,
+  "Duration runs from 1 to 365 days",
+);
+
 export const eventParticipantInputSchema = z
   .object({
     personId: idSchema.optional(),
@@ -54,6 +63,7 @@ export const eventBaseSchema = z.object({
   description: tiptapDocSchema.nullish(),
   sentiment: sentimentSchema.default(0),
   weight: weightSchema.default(1),
+  durationDays: durationDaysSchema.default(1),
   participants: z.array(eventParticipantInputSchema).default([]),
 });
 

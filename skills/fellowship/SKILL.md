@@ -54,6 +54,11 @@ the gate; "write a sketch of Sam" is not.
 3. **Read before writing a judgement.** `people.get` and `people.insights`
    before answering a question about someone, and before drafting a sketch.
 4. **Write one thing at a time**, and report what landed.
+5. **Set the relationship.** Everyone added from a conversation gets a tie to
+   the user: `relationship` on `people.create`, or `people.set_link` with the
+   user's own id. FAMILY and PARTNER fade slowest, then CLOSE_FRIEND, FRIEND,
+   ACQUAINTANCE and COLLEAGUE. An unset tie is ACQUAINTANCE, which undersells
+   a sister. Ask when the conversation does not say.
 
 ## Logging an occasion
 
@@ -80,6 +85,11 @@ their own link to the user.
 Sentiment is a coarse scale: `-2` bad, `-1` tense, `0` neutral, `+1` good, `+2`
 great. Deliberately coarse so logging stays fast. When the messages do not say
 how something went, leave sentiment out rather than guessing at it.
+
+`durationDays` is how many days an occasion lasted: 1 for a meal, 14 for two
+weeks staying together. A longer stretch counts for more, with diminishing
+returns, and `type: "WORK"` counts for a quarter. To fix an occasion already
+logged (its length, its date, who was there), use `people.update_event`.
 
 ## Drafting for review
 

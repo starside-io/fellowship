@@ -29,7 +29,7 @@ describe("the HTTP surface", () => {
         ok: true,
         silo: host.siloPath,
         hostDb: host.hostPath,
-        tools: 42,
+        tools: 43,
       });
     } finally {
       await host.close();
@@ -41,7 +41,7 @@ describe("the HTTP surface", () => {
     try {
       const response = await createApp(host).request("/rpc/tools");
       const body = (await response.json()) as { tools: Array<{ name: string; kind: string }> };
-      expect(body.tools).toHaveLength(42);
+      expect(body.tools).toHaveLength(43);
       expect(body.tools.filter((tool) => tool.kind === "needs-ok")).toHaveLength(6);
     } finally {
       await host.close();

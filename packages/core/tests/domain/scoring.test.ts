@@ -6,8 +6,12 @@ import {
   contribution,
   daysBetween,
   decay,
+  endOf,
+  lengthFactor,
   pairEffectiveSentiment,
+  routineFactor,
   scoreFromContributionSum,
+  tieHalfLife,
   type PairEvent,
 } from "../../src/domain/scoring.js";
 
@@ -251,5 +255,79 @@ describe("computePairScore", () => {
     ];
     // No negative day count, so decay stays at 1 rather than amplifying.
     expect(computePairScore(events, NOW)).toBe(5);
+  });
+});
+
+describe("time together, the kind of tie, and routine", () => {
+  const NOW = new Date("2026-11-27T00:00:00Z");
+  const ago = (days: number) => new Date(NOW.getTime() - days * DAY_MS);
+  const visit = (daysAgo: number, extra: Partial<PairEvent> = {}): PairEvent => ({
+    occurredAt: ago(daysAgo),
+    sentiment: 2,
+    weight: 2,
+    ...extra,
+  });
+
+  it("counts a long stay for more than an evening, with diminishing returns", () => {
+    expect(lengthFactor(1)).toBe(1);
+    expect(lengthFactor(2)).toBe(2);
+    expect(lengthFactor(14)).toBeCloseTo(4.807, 3);
+    expect(lengthFactor(30)).toBeCloseTo(5.907, 3);
+
+    const evening = computePairScore([visit(30)], NOW);
+    const fortnight = computePairScore([visit(30 + 13, { durationDays: 14 })], NOW);
+    expect(fortnight).toBeGreaterThan(evening * 4);
+  });
+
+  it("starts the fade from the last day of a stay, not the first", () => {
+    const started = ago(20);
+    expect(endOf(started, 14).getTime()).toBe(ago(7).getTime());
+    // Still going: nothing has faded yet.
+    expect(computePairScore([visit(5, { durationDays: 14 })], NOW)).toBe(
+      computePairScore([visit(0, { durationDays: 14 })], NOW),
+    );
+  });
+
+  it("lets family closeness last, and a colleague's fade fast", () => {
+    const once = [visit(180)];
+    const family = computePairScore(once, NOW, undefined, "FAMILY");
+    const friend = computePairScore(once, NOW, undefined, "FRIEND");
+    const colleague = computePairScore(once, NOW, undefined, "COLLEAGUE");
+    expect(tieHalfLife("FAMILY")).toBe(360);
+    expect(tieHalfLife("COLLEAGUE")).toBe(90);
+    expect(family).toBeGreaterThan(friend);
+    expect(friend).toBeGreaterThan(colleague);
+    // The label adds nothing on its own: no shared time, no closeness.
+    expect(computePairScore([], NOW, undefined, "FAMILY")).toBe(0);
+  });
+
+  it("counts work at a quarter", () => {
+    const dinner = computePairScore([visit(1, { weight: 1 })], NOW);
+    const meeting = computePairScore([visit(1, { weight: 1, type: "WORK" })], NOW);
+    expect(dinner).toBe(10);
+    expect(meeting).toBe(2);
+  });
+
+  it("levels routine off: twenty lunches in a month count about like five", () => {
+    const lunches = (count: number) =>
+      Array.from({ length: count }, (_, index) => visit(1 + index, { weight: 1, sentiment: 1 }));
+    const twenty = computePairScore(lunches(20), NOW);
+    const five = computePairScore(lunches(5), NOW);
+    const three = computePairScore(lunches(3), NOW);
+    expect(routineFactor(3)).toBe(1);
+    expect(routineFactor(6)).toBeCloseTo(0.25, 5);
+    expect(three).toBe(15);
+    expect(twenty).toBeLessThan(three * 2);
+    expect(Math.abs(twenty - five)).toBeLessThanOrEqual(10);
+  });
+
+  it("scores the worked example: two weeks home and a weekend in Lyon, as family", () => {
+    // From the owner's question: 22 under the old formula, about 95 under this one.
+    const events = [
+      visit(44 + 13, { durationDays: 14 }),
+      visit(377 + 1, { durationDays: 2 }),
+    ];
+    expect(computePairScore([visit(44), visit(377)], NOW)).toBe(22);
+    expect(computePairScore(events, NOW, undefined, "FAMILY")).toBeGreaterThanOrEqual(90);
   });
 });

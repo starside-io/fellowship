@@ -6,7 +6,7 @@ import { seedPerson, seedSelf, testHost } from "./harness.js";
 /**
  * The surface itself: the registry's shape, and every tool run at least once.
  *
- * The count matters: 42, of which four are the model agnostic drafting tools
+ * The count matters: 43, of which four are the model agnostic drafting tools
  * that let any model behind any assistant propose a draft for review.
  */
 
@@ -39,6 +39,7 @@ const EXPECTED = {
     "people.archive",
     "people.add_note",
     "people.log_interaction",
+    "people.update_event",
     "people.set_contacts",
     "people.set_tags",
     "people.set_circles",
@@ -70,7 +71,7 @@ describe("the registry", () => {
         .sort();
       expect(declared, kind).toEqual([...names].sort());
     }
-    expect(registry.tools).toHaveLength(42);
+    expect(registry.tools).toHaveLength(43);
   });
 
   it("namespaces every tool and gives each a title and a line of its own", () => {
@@ -87,7 +88,7 @@ describe("the registry", () => {
       await expect(host.api.invoke("people.delete_everything", {})).rejects.toMatchObject({
         code: "unknown_tool",
       });
-      expect(host.api.describe()).toHaveLength(42);
+      expect(host.api.describe()).toHaveLength(43);
     } finally {
       await host.close();
     }

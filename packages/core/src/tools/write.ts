@@ -3,19 +3,31 @@ import { z } from "zod";
 import { Prisma } from "../../generated/prisma/index.js";
 import { avatarColorFor } from "../domain/avatar-colour.js";
 import { normaliseContactValue } from "../domain/contact-values.js";
-import { recomputeForPeople } from "../domain/link-engine.js";
+import { recomputeForPeople, recomputePairs } from "../domain/link-engine.js";
 import { noteSearchText } from "../storage/search.js";
 import { avatarResolverListSchema } from "../config/avatar-resolvers.js";
-import { idSchema, optionalText, optionalUrl, slugify } from "../schemas/common.js";
+import {
+  dateTimeSchema,
+  idSchema,
+  optionalText,
+  optionalUrl,
+  slugify,
+} from "../schemas/common.js";
 import {
   ContactConfidence,
   ContactSource,
+  EventType,
   FavourDirection,
   TagKind,
   TieType,
 } from "../schemas/enums.js";
 import { importChatSchema, mapSenderSchema } from "../schemas/conversation.js";
-import { eventBaseSchema } from "../schemas/event.js";
+import {
+  durationDaysSchema,
+  eventBaseSchema,
+  sentimentSchema,
+  weightSchema,
+} from "../schemas/event.js";
 import { fieldDefinitionBaseSchema } from "../schemas/field-definition.js";
 import { noteCreateSchema } from "../schemas/note.js";
 import { personCreateSchema, personUpdateSchema } from "../schemas/person.js";
@@ -61,13 +73,18 @@ export const createTool = defineTool({
   title: "Add a person",
   kind: "write",
   summary:
-    "Adds a person. Search first: this creates a second row for a name that is already here. isSelf creates the owner's own record, and is refused when one already exists: update that one instead (people.self gives its id).",
+    "Adds a person. Search first: this creates a second row for a name that is already here. Set relationship whenever the conversation says who they are to the owner (FAMILY, PARTNER, CLOSE_FRIEND, FRIEND, COLLEAGUE, ACQUAINTANCE): it decides how long shared time keeps counting toward closeness, and someone left unset fades as an acquaintance. isSelf creates the owner's own record, and is refused when one already exists: update that one instead (people.self gives its id).",
   input: personCreateSchema.extend({
     /**
      * The owner's own record, which closeness and the graph are measured
      * against. There is exactly one, so this only creates it the first time.
      */
     isSelf: z.boolean().default(false),
+    /**
+     * Who this person is to the owner. Sets the tie of their link, which
+     * decides how slowly closeness fades: family lasts, a colleague fades.
+     */
+    relationship: TieType.optional(),
   }),
   async handler(ctx, input) {
     if (input.isSelf) {
@@ -100,12 +117,36 @@ export const createTool = defineTool({
       },
     });
 
+    // The tie lives on the link to the owner, so it needs an owner to hang from.
+    let relationship: string | null = null;
+    if (input.relationship && !input.isSelf) {
+      const self = await ctx.db.person.findFirst({ where: { isSelf: true }, select: { id: true } });
+      if (self) {
+        const key =
+          self.id < person.id
+            ? { aPersonId: self.id, bPersonId: person.id }
+            : { aPersonId: person.id, bPersonId: self.id };
+        await ctx.db.link.upsert({
+          where: { aPersonId_bPersonId: key },
+          update: { tie: input.relationship },
+          create: { ...key, tie: input.relationship },
+        });
+        relationship = input.relationship;
+      }
+    }
+
     await ctx.ports.bus.emit("people.person.created", {
       personId: person.id,
       displayName: person.displayName,
     });
 
-    return { person };
+    return {
+      person,
+      relationship,
+      ...(input.relationship && !relationship
+        ? { hint: "No owner record yet, so the relationship was not set. Set it with people.set_link once people.self exists." }
+        : {}),
+    };
   },
 });
 
@@ -198,7 +239,7 @@ export const logInteractionTool = defineTool({
   title: "Log an interaction",
   kind: "write",
   summary:
-    "Logs something that happened, with who was there. Returns unmatched names rather than inventing people.",
+    "Logs something that happened, with who was there. durationDays is how many days it lasted (a trip or a stay together counts for more than an evening); type WORK counts for less. Returns unmatched names rather than inventing people.",
   input: eventBaseSchema,
   async handler(ctx, input) {
     const resolved: Array<{ personId: string; role: string | null; sentiment: number | null }> = [];
@@ -257,6 +298,7 @@ export const logInteractionTool = defineTool({
           ...(input.description ? { description: jsonValue(input.description) } : {}),
           sentiment: input.sentiment,
           weight: input.weight,
+          durationDays: input.durationDays,
           participants: {
             createMany: {
               data: resolved.map((participant) => ({
@@ -283,6 +325,99 @@ export const logInteractionTool = defineTool({
     });
 
     return { written: true as const, event, personIds, recompute, unmatched: [] };
+  },
+});
+
+/**
+ * Changes an occasion that is already logged: its title, its date, how long it
+ * lasted, who was there. Fields left out stay as they are. A participants list
+ * replaces the old one whole, and every pair the occasion touched, before or
+ * after, is rescored.
+ */
+export const updateEventTool = defineTool({
+  name: "people.update_event",
+  title: "Edit an occasion",
+  kind: "write",
+  summary:
+    "Edits a logged occasion: title, type, date, how many days it lasted, place, sentiment, weight, or who was there. Fields left out are kept; a participants list replaces the old one. Closeness is rescored for everyone it touched.",
+  input: z.object({
+    eventId: idSchema,
+    title: z.string().trim().min(1, "A title is required").max(200).optional(),
+    type: EventType.optional(),
+    occurredAt: dateTimeSchema.optional(),
+    durationDays: durationDaysSchema.optional(),
+    location: optionalText,
+    sentiment: sentimentSchema.optional(),
+    weight: weightSchema.optional(),
+    /** Everyone who was there, by id: people.search gives them. Replaces the old list. */
+    participants: z
+      .array(
+        z.object({
+          personId: idSchema,
+          role: optionalText,
+          sentiment: sentimentSchema.nullish(),
+        }),
+      )
+      .min(1, "An occasion needs someone who was there")
+      .max(50)
+      .optional(),
+  }),
+  async handler(ctx, input) {
+    const before = await ctx.db.event.findUnique({
+      where: { id: input.eventId },
+      select: { id: true, participants: { select: { personId: true } } },
+    });
+    if (!before) throw new ToolError("not_found", `No occasion with id "${input.eventId}"`);
+
+    const participants = input.participants
+      ? [...new Map(input.participants.map((entry) => [entry.personId, entry])).values()]
+      : null;
+    for (const participant of participants ?? []) await requirePerson(ctx, participant.personId);
+
+    const event = await ctx.db.$transaction(async (tx) => {
+      if (participants) {
+        await tx.eventParticipant.deleteMany({ where: { eventId: input.eventId } });
+        await tx.eventParticipant.createMany({
+          data: participants.map((participant) => ({
+            eventId: input.eventId,
+            personId: participant.personId,
+            role: participant.role ?? null,
+            sentiment: participant.sentiment ?? null,
+          })),
+        });
+      }
+      return tx.event.update({
+        where: { id: input.eventId },
+        data: {
+          ...(input.title === undefined ? {} : { title: input.title }),
+          ...(input.type === undefined ? {} : { type: input.type }),
+          ...(input.occurredAt === undefined ? {} : { occurredAt: input.occurredAt }),
+          ...(input.durationDays === undefined ? {} : { durationDays: input.durationDays }),
+          ...(input.location === undefined ? {} : { location: input.location }),
+          ...(input.sentiment === undefined ? {} : { sentiment: input.sentiment }),
+          ...(input.weight === undefined ? {} : { weight: input.weight }),
+        },
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          occurredAt: true,
+          durationDays: true,
+          participants: { select: { personId: true } },
+        },
+      });
+    });
+
+    // Pairs that lost someone are rescored as well as the ones that remain.
+    const personIds = [
+      ...new Set([
+        ...before.participants.map((participant) => participant.personId),
+        ...event.participants.map((participant) => participant.personId),
+      ]),
+    ];
+    const recompute = await recomputeForPeople(ctx.db, personIds, ctx.now, scoring(ctx));
+
+    return { event, recompute };
   },
 });
 
@@ -699,7 +834,7 @@ export const setLinkTool = defineTool({
   title: "Curate a link",
   kind: "write",
   summary:
-    "Writes the human half of a link: the tie, a manual score, pinned, notes. The derived score is a cache and no tool can write it.",
+    "Writes the human half of a link: the tie, a manual score, pinned, notes. The tie is who they are to each other (FAMILY, PARTNER, CLOSE_FRIEND, FRIEND, COLLEAGUE, ACQUAINTANCE, KNOWS_OF, ESTRANGED) and sets how slowly their closeness fades, so set it whenever a conversation makes it plain; changing it rescores the pair. The derived score itself is a cache and no tool can write it.",
   input: z.object({
     aPersonId: idSchema,
     bPersonId: idSchema,
@@ -729,12 +864,21 @@ export const setLinkTool = defineTool({
       ...(input.notes === undefined ? {} : { notes: input.notes }),
     };
 
-    const link = await ctx.db.link.upsert({
+    let link = await ctx.db.link.upsert({
       where: { aPersonId_bPersonId: key },
       update: data,
       create: { ...key, ...data },
       include: { stat: true },
     });
+
+    // The tie sets how fast closeness fades, so the cached score moves with it.
+    if (input.tie) {
+      await recomputePairs(ctx.db, [key], ctx.now, scoring(ctx));
+      link = await ctx.db.link.findUniqueOrThrow({
+        where: { aPersonId_bPersonId: key },
+        include: { stat: true },
+      });
+    }
 
     return { link };
   },
@@ -810,6 +954,7 @@ export const writeTools: ToolDefinition<never, unknown>[] = [
   archiveTool,
   addNoteTool,
   logInteractionTool,
+  updateEventTool,
   setContactsTool,
   setTagsTool,
   setCirclesTool,

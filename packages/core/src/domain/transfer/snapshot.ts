@@ -242,6 +242,7 @@ export type SnapshotEvent = {
   description: Record<string, JsonValue> | null;
   sentiment: number;
   weight: number;
+  durationDays: number;
   createdAt: string;
   updatedAt: string;
   participants: SnapshotEventParticipant[];
@@ -464,6 +465,8 @@ const eventSchema = z.object({
   description: tiptapColumnSchema.nullish().transform((value) => value ?? null),
   sentiment: z.number().int().default(0),
   weight: z.number().int().default(1),
+  /** Snapshots written before durations existed hold one day per occasion. */
+  durationDays: z.number().int().min(1).max(365).default(1),
   createdAt: dateTimeSchema,
   updatedAt: dateTimeSchema,
   participants: z.array(eventParticipantSchema).default([]),

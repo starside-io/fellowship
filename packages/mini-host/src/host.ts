@@ -1,4 +1,4 @@
-import { activate, storage, type ModuleApi } from "@fellowship/core";
+import { activate, domain, storage, type ModuleApi } from "@fellowship/core";
 import type { HostPorts, ModuleConfig, Silo } from "@fellowship/core";
 
 import { openHostDb, resolveHostDbPath, type HostDb } from "./host-db.js";
@@ -60,6 +60,8 @@ export async function startMiniHost(options: MiniHostOptions = {}): Promise<Mini
     ...(options.env ? { env: options.env } : {}),
   });
 
+  await rescoreIfFormulaChanged(silo, store, readConfig());
+
   return {
     api: activate(ports),
     ports,
@@ -74,4 +76,28 @@ export async function startMiniHost(options: MiniHostOptions = {}): Promise<Mini
       await silo.$disconnect();
     },
   };
+}
+
+/** The host.db setting naming the formula the cached scores were computed by. */
+export const SCORING_VERSION_SETTING = "scoring.version";
+
+/**
+ * LinkStat.score is a cache of the closeness formula. When a new build brings
+ * a new formula, every cached score is from the old one until something
+ * touches that pair, and a pair nothing touches never recovers. So the first
+ * host on the new formula rebuilds them all, once.
+ */
+export async function rescoreIfFormulaChanged(
+  silo: Silo,
+  store: HostStore,
+  config: ModuleConfig,
+): Promise<boolean> {
+  const version = domain.scoring.SCORING_VERSION;
+  if (store.readSetting(SCORING_VERSION_SETTING) === version) return false;
+  await domain.linkEngine.recomputeAll(silo, new Date(), {
+    halfLifeDays: config.halfLifeDays,
+    scoreScale: config.scoreScale,
+  });
+  store.writeSetting(SCORING_VERSION_SETTING, version);
+  return true;
 }

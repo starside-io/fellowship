@@ -35,13 +35,13 @@ function payloadOf(result: unknown): unknown {
 }
 
 describe("the stdio server", () => {
-  it("advertises all 42 people tools and the 3 app tools, with dots mapped to underscores", async () => {
+  it("advertises all 43 people tools and the 3 app tools, with dots mapped to underscores", async () => {
     const host = await throwawayHost();
     const { client, close } = await connect(host);
     try {
       const listed = await client.listTools();
-      expect(listed.tools).toHaveLength(45);
-      expect(listed.tools.filter((tool) => tool.name.startsWith("people_"))).toHaveLength(42);
+      expect(listed.tools).toHaveLength(46);
+      expect(listed.tools.filter((tool) => tool.name.startsWith("people_"))).toHaveLength(43);
 
       const names = listed.tools.map((tool) => tool.name);
       expect(names).toContain("people_search");

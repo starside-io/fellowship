@@ -37,7 +37,11 @@ people record in a scratch file is worse than no record.
      dropped or forced into the nearest field
 4. **Write.** `people.create` or `people.update`, then `people.set_tags`,
    `people.set_contacts`, `people.set_custom_values` as needed. One person per
-   call.
+   call. Set who they are to the user: `relationship` on `people.create`
+   (FAMILY, PARTNER, CLOSE_FRIEND, FRIEND, COLLEAGUE or ACQUAINTANCE), or
+   `people.set_link` with the user's own id for someone already here. It
+   decides how long time together keeps counting toward closeness. Ask when it
+   is not plain from what the user said.
 5. **Report what landed and what did not.** Name every fact that went in, and
    every one that had nowhere to go.
 

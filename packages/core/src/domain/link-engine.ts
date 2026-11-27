@@ -39,6 +39,8 @@ type EventRow = {
   occurredAt: Date;
   sentiment: number;
   weight: number;
+  durationDays: number;
+  type: string;
   participants: { personId: string; sentiment: number | null }[];
 };
 
@@ -46,6 +48,8 @@ const eventRowSelect = {
   occurredAt: true,
   sentiment: true,
   weight: true,
+  durationDays: true,
+  type: true,
   participants: { select: { personId: true, sentiment: true } },
 } as const;
 
@@ -101,6 +105,7 @@ function aggregateEvents(
   events: EventRow[],
   now: Date,
   config: ScoringConfig,
+  ties: Map<string, TieType>,
 ): Map<string, PairAggregate> {
   const buckets = new Map<string, { key: PairKey; events: PairEvent[] }>();
 
@@ -125,6 +130,8 @@ function aggregateEvents(
           occurredAt: event.occurredAt,
           sentiment: event.sentiment,
           weight: event.weight,
+          durationDays: event.durationDays,
+          type: event.type,
           overrideA: firstIsA ? first.sentiment : second.sentiment,
           overrideB: firstIsA ? second.sentiment : first.sentiment,
         });
@@ -154,7 +161,7 @@ function aggregateEvents(
 
     aggregates.set(token, {
       ...bucket.key,
-      score: computePairScore(bucket.events, now, config),
+      score: computePairScore(bucket.events, now, config, ties.get(token) ?? DEFAULT_TIE),
       eventCount: bucket.events.length,
       lastEventAt,
       positiveCount,
@@ -178,6 +185,13 @@ type LinkRow = {
 
 /** The tie a derived link gets when nobody has said otherwise. */
 const DEFAULT_TIE: TieType = "ACQUAINTANCE";
+
+/** Each existing link's tie, by pair. A pair with no link yet is an acquaintance. */
+function tiesOf(links: Iterable<LinkRow>): Map<string, TieType> {
+  const ties = new Map<string, TieType>();
+  for (const link of links) ties.set(pairToken(link), link.tie as TieType);
+  return ties;
+}
 
 /** A link with no shared events survives only if a human touched it. */
 function isCurated(link: LinkRow): boolean {
@@ -310,8 +324,9 @@ export async function recomputePairs(
     },
   });
 
-  const aggregates = aggregateEvents(events, now, config);
+  // The tie of each pair sets how fast its closeness fades, so links come first.
   const existing = await findLinks(db, [...wanted.values()]);
+  const aggregates = aggregateEvents(events, now, config, tiesOf(existing.values()));
 
   for (const [token, key] of wanted) {
     const aggregate = aggregates.get(token) ?? emptyAggregate(key);
@@ -365,7 +380,6 @@ export async function recomputeAll(
   config: ScoringConfig = DEFAULT_SCORING,
 ): Promise<RecomputeResult> {
   const events = await db.event.findMany({ select: eventRowSelect });
-  const aggregates = aggregateEvents(events, now, config);
 
   const links = await db.link.findMany({
     select: {
@@ -380,6 +394,7 @@ export async function recomputeAll(
   });
 
   const existing = new Map(links.map((link) => [pairToken(link), link]));
+  const aggregates = aggregateEvents(events, now, config, tiesOf(links));
   const result: RecomputeResult = {
     pairsProcessed: 0,
     linksUpserted: 0,

@@ -64,6 +64,12 @@ describe("the settings port", () => {
     try {
       const selfId = await seedSelf(host);
       const personId = await seedPerson(host, "Sam Rivera");
+      // A friend fades at the configured half life itself, which is what this checks.
+      await host.api.invoke("people.set_link", {
+        aPersonId: selfId,
+        bPersonId: personId,
+        tie: "FRIEND",
+      });
 
       const now = new Date("2026-07-31T12:00:00.000Z");
       await host.api.invoke(

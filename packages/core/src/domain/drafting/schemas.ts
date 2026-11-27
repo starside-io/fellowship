@@ -108,6 +108,8 @@ export const recapEventSchema = z.object({
   participantIds: z.array(z.string().uuid()).min(1).max(30),
   sentiment: z.number().int().min(-2).max(2),
   weight: z.number().int().min(1).max(3),
+  /** How many days it lasted: 1 for an evening, 14 for a two week stay. */
+  durationDays: z.number().int().min(1).max(365).default(1),
   /** The words that say it happened, quoted from the messages. */
   quote: quoteSchema,
   confidence: confidenceSchema,

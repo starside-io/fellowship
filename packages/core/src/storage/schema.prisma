@@ -193,6 +193,8 @@ model Event {
   description Json?
   sentiment   Int      @default(0)
   weight      Int      @default(1)
+  /// How many days it lasted: 1 for a coffee, 14 for two weeks at someone's place.
+  durationDays Int     @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

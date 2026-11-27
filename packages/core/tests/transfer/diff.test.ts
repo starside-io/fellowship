@@ -76,6 +76,7 @@ function snapshot(overrides: Partial<ExportSnapshot> = {}): ExportSnapshot {
         description: { type: "doc", content: [] },
         sentiment: 2,
         weight: 1,
+        durationDays: 1,
         createdAt: "2026-06-02T12:00:00.000Z",
         updatedAt: "2026-06-02T12:00:00.000Z",
         participants: [{ personId: PERSON, role: null, sentiment: 1 }],

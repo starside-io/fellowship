@@ -73,6 +73,7 @@ export function Events() {
       title: string;
       type: string;
       occurredAt: string;
+      durationDays: number;
       sentiment: number;
       participants: Array<{ id: string; displayName: string }>;
     }>;
@@ -188,6 +189,9 @@ export function Events() {
             <li key={event.id} className="flex flex-wrap items-center gap-3 py-3">
               <span className="text-muted-foreground w-24 shrink-0 text-xs">
                 {new Date(event.occurredAt).toLocaleDateString()}
+                {event.durationDays > 1 ? (
+                  <span className="block">{event.durationDays} days</span>
+                ) : null}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{event.title}</span>
@@ -231,6 +235,7 @@ function LogOccasion({
   const [location, setLocation] = useState("");
   const [sentiment, setSentiment] = useState(1);
   const [weight, setWeight] = useState(1);
+  const [days, setDays] = useState("1");
   const [chosen, setChosen] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [open, setOpen] = useState(false);
@@ -258,6 +263,7 @@ function LogOccasion({
       location: location.trim() === "" ? null : location,
       sentiment,
       weight,
+      durationDays: Math.min(365, Math.max(1, Math.round(Number(days) || 1))),
       participants,
       ...(description.trim() === "" ? {} : { description: toDoc(description) }),
     });
@@ -266,6 +272,7 @@ function LogOccasion({
       setTitle("");
       setLocation("");
       setDescription("");
+      setDays("1");
       setChosen([]);
       setOpen(false);
     }
@@ -350,6 +357,21 @@ function LogOccasion({
             onChange={(event) => setLocation(event.target.value)}
             placeholder="Optional"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="occasion-days">How many days</Label>
+          <Input
+            id="occasion-days"
+            type="number"
+            min={1}
+            max={365}
+            value={days}
+            onChange={(event) => setDays(event.target.value)}
+          />
+          <p className="text-muted-foreground text-xs">
+            1 for an evening. A trip or a stay together counts for more.
+          </p>
         </div>
 
         <div className="space-y-1.5">

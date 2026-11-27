@@ -111,6 +111,12 @@ describe("a change to halfLifeDays", () => {
     try {
       const selfId = await seedSelf(host);
       const personId = await seedPerson(host, "Sam Rivera");
+      // A friend fades at the configured half life itself, which is what this checks.
+      await host.api.invoke("people.set_link", {
+        aPersonId: selfId,
+        bPersonId: personId,
+        tie: "FRIEND",
+      });
 
       await host.api.invoke("people.log_interaction", {
         title: "Dinner",

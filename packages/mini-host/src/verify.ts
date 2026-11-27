@@ -155,6 +155,11 @@ const AVATAR_DEFAULTS: Record<string, unknown> = {
   avatarSource: "MANUAL",
 };
 
+/** Columns added after snapshots already existed, with the default an old file gets. */
+const COLUMN_DEFAULTS: Record<string, unknown> = {
+  durationDays: 1,
+};
+
 export function classify(diff: domain.transfer.SnapshotDiff): Classified {
   const normalized: Normalization[] = [];
   const unexplained: Normalization[] = [];
@@ -206,6 +211,18 @@ export function classify(diff: domain.transfer.SnapshotDiff): Classified {
           normalized.push({
             ...entry,
             reason: `the column is NOT NULL here, so it took its default (${String(field.after)})`,
+          });
+          continue;
+        }
+
+        if (
+          field.before === undefined &&
+          field.path in COLUMN_DEFAULTS &&
+          field.after === COLUMN_DEFAULTS[field.path]
+        ) {
+          normalized.push({
+            ...entry,
+            reason: `the file predates this column, so it took its default (${String(field.after)})`,
           });
           continue;
         }

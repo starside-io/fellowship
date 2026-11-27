@@ -160,6 +160,7 @@ function fullSnapshot(): ExportSnapshot {
         description: { type: "doc", content: [] },
         sentiment: 2,
         weight: 2,
+        durationDays: 3,
         createdAt: "2026-06-02T12:00:00.000Z",
         updatedAt: "2026-06-02T12:00:00.000Z",
         participants: [

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { ModuleConfig } from "../../config/index.js";
+import type { TieType } from "../../schemas/enums.js";
 import type { Proposal, QueuedProposal, ReviewPort } from "../../ports.js";
 import type { Silo } from "../../storage/client.js";
 import { computePairScore, type PairEvent } from "../scoring.js";
@@ -466,6 +467,8 @@ async function pairEvents(db: Silo, a: string, b: string): Promise<PairEvent[]> 
       occurredAt: true,
       sentiment: true,
       weight: true,
+      durationDays: true,
+      type: true,
       participants: { select: { personId: true, sentiment: true } },
     },
   });
@@ -473,6 +476,8 @@ async function pairEvents(db: Silo, a: string, b: string): Promise<PairEvent[]> 
     occurredAt: row.occurredAt,
     sentiment: row.sentiment,
     weight: row.weight,
+    durationDays: row.durationDays,
+    type: row.type,
     overrideA: row.participants.find((p) => p.personId === a)?.sentiment ?? null,
     overrideB: row.participants.find((p) => p.personId === b)?.sentiment ?? null,
   }));
@@ -626,6 +631,8 @@ export async function recapProposals(
     occurredAt: entry.shape.occurredAt,
     sentiment: entry.event.sentiment,
     weight: entry.event.weight,
+    durationDays: entry.event.durationDays,
+    type: entry.event.type,
   });
 
   const pairLabel = (a: string, b: string) => {
@@ -636,6 +643,7 @@ export async function recapProposals(
 
   const previews: ScorePreview[] = [];
   const existingByPair = new Map<string, PairEvent[]>();
+  const tieByPair = new Map<string, TieType>();
   for (const [key, [a, b]] of pairs) {
     const existing = await pairEvents(db, a, b);
     existingByPair.set(key, existing);
@@ -644,13 +652,15 @@ export async function recapProposals(
     );
     const link = await db.link.findUnique({
       where: { aPersonId_bPersonId: { aPersonId: a, bPersonId: b } },
-      select: { manualScore: true },
+      select: { manualScore: true, tie: true },
     });
+    const tie = (link?.tie ?? "ACQUAINTANCE") as TieType;
+    tieByPair.set(key, tie);
     previews.push({
       personIds: [a, b],
       label: pairLabel(a, b),
-      current: computePairScore(existing, now, scoring),
-      projected: computePairScore([...existing, ...added.map(toPairEvent)], now, scoring),
+      current: computePairScore(existing, now, scoring, tie),
+      projected: computePairScore([...existing, ...added.map(toPairEvent)], now, scoring, tie),
       added: added.length,
       manualScore: link?.manualScore ?? null,
     });
@@ -749,9 +759,14 @@ export async function recapProposals(
       .filter((preview) => preview.personIds.every((id) => shape.personIds.includes(id)))
       .filter((preview) => preview.personIds.includes(ownerId ?? "") || !ownerId)
       .map((preview) => {
-        const existing =
-          existingByPair.get(`${preview.personIds[0]}|${preview.personIds[1]}`) ?? [];
-        const alone = computePairScore([...existing, toPairEvent(entry)], now, scoring);
+        const pair = `${preview.personIds[0]}|${preview.personIds[1]}`;
+        const existing = existingByPair.get(pair) ?? [];
+        const alone = computePairScore(
+          [...existing, toPairEvent(entry)],
+          now,
+          scoring,
+          tieByPair.get(pair) ?? "ACQUAINTANCE",
+        );
         return `${preview.label} ${preview.current} → ${alone}`;
       });
     proposals.push({
@@ -763,6 +778,7 @@ export async function recapProposals(
         ...(event.location ? { location: event.location } : {}),
         sentiment: event.sentiment,
         weight: event.weight,
+        durationDays: event.durationDays,
         participants: shape.personIds.map((personId) => ({ personId })),
         description: quoteDoc([`"${event.quote}"`, recapLine]),
       },

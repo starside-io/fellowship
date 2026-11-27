@@ -239,6 +239,7 @@ export const activityTool = defineTool({
           title: true,
           type: true,
           occurredAt: true,
+          durationDays: true,
           sentiment: true,
           participants: {
             select: { person: { select: { id: true, displayName: true } } },
@@ -285,6 +286,7 @@ export const activityTool = defineTool({
         title: event.title,
         type: event.type,
         occurredAt: event.occurredAt,
+        durationDays: event.durationDays,
         sentiment: event.sentiment,
         participants: event.participants.map((participant) => participant.person),
       })),

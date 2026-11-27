@@ -219,6 +219,7 @@ export async function buildExportSnapshot(db: Silo): Promise<ExportSnapshot> {
       description: event.description ? asJsonObject(event.description) : null,
       sentiment: event.sentiment,
       weight: event.weight,
+      durationDays: event.durationDays,
       createdAt: event.createdAt.toISOString(),
       updatedAt: event.updatedAt.toISOString(),
       participants: event.participants.map((participant) => ({

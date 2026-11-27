@@ -71,6 +71,7 @@ function snapshot(overrides: Record<string, unknown> = {}) {
         description: { type: "doc", content: [] },
         sentiment: 2,
         weight: 1,
+        durationDays: 1,
         createdAt: "2026-06-02T12:00:00.000Z",
         updatedAt: "2026-06-02T12:00:00.000Z",
         participants: [
@@ -204,6 +205,17 @@ describe("verifySnapshot", () => {
       "avatarFetchedAt",
       "avatarMime",
       "avatarSource",
+    ]);
+  });
+
+  it("reads an occasion from before durations existed as one day, not as loss", async () => {
+    const file = snapshot() as { events: Array<Record<string, unknown>> };
+    const events = file.events.map(({ durationDays: _dropped, ...event }) => event);
+    const result = await verifySnapshot(write({ ...file, events }));
+
+    expect(result.ok).toBe(true);
+    expect(result.classified.normalized).toEqual([
+      expect.objectContaining({ collection: "events", path: "durationDays" }),
     ]);
   });
 

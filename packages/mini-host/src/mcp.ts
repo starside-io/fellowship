@@ -57,6 +57,8 @@ export function createMcpServer(host: MiniHost, options: McpServerOptions = {}):
       instructions: [
         "Fellowship tracks the people in one person's life: who they are, what they like, what to avoid, the occasions they shared, and how close each connection is.",
         "Search before you write. people_search returns the ids every other tool takes, and people_create makes a second row for a name that is already here.",
+        "When you add someone, set who they are to the owner: relationship on people_create, or people_set_link with the owner's id for someone already here. Family, partner, close friend, friend, colleague or acquaintance decides how long shared time keeps counting toward closeness. Ask when a conversation does not make it plain.",
+        "Log trips and stays with durationDays, the number of days they lasted. people_update_event fixes an occasion already logged, its length and who was there included.",
         "Nothing you write is confirmed. The user confirms, in the app.",
         "people_log_interaction returns unmatched names rather than inventing a person. Resolve them and call it again.",
         "A sketch holds observed behaviour with a quote or a number behind each claim. No diagnosis, no personality typing: those drafts are refused.",

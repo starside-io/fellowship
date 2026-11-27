@@ -463,6 +463,7 @@ async function insertAll(
         description: jsonOrNull(event.description),
         sentiment: event.sentiment,
         weight: event.weight,
+        durationDays: event.durationDays,
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
         participants: {
@@ -816,6 +817,7 @@ async function mergeAll(
       description: jsonOrNull(event.description),
       sentiment: event.sentiment,
       weight: event.weight,
+      durationDays: event.durationDays,
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     };
