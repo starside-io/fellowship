@@ -2,7 +2,7 @@
   "id": "people",
   "namespacedId": "fellowship.people",
   "name": "Fellowship",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A local-first tracker of the people in one person's life: who they are, what they like, what to avoid, the occasions they shared, and the derived strength of every connection.",
   "schemaVersion": 1,
   "permissions": {
