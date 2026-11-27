@@ -1,6 +1,6 @@
 {
   "name": "@fellowship/core",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": true,
   "description": "The people module: schemas, tools, domain logic and the silo schema. Knows nothing about a host beyond its ports.",
   "license": "Apache-2.0",

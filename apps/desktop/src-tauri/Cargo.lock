@@ -741,7 +741,7 @@ dependencies = [
 
 [[package]]
 name = "fellowship-desktop"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "tauri",
  "tauri-build",
