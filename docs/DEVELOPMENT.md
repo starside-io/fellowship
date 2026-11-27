@@ -172,7 +172,9 @@ same registry, the same validation and the same audit line.
 - **Link scores are derived, never written by hand.** Per shared occasion,
   `contribution = sentiment * weight * (1 + log2(days)) * kind * routine * 0.5^(daysSinceItEnded / halfLife)`,
   then `clamp(round(5 * sum), -100, 100)`. `kind` is 0.25 for WORK. `routine`
-  is 1 for the first three occasions with someone in 30 days, then `(3/n)^2`.
+  applies to WORK occasions and to everything with a COLLEAGUE: 1 for the
+  first three in 30 days, then `(3/n)^2`. Anyone else seen often counts in
+  full, because that is the closeness itself.
   `halfLife` is 180 days for a FRIEND, twice that for FAMILY and PARTNER, 4/3
   for CLOSE_FRIEND, 2/3 for ACQUAINTANCE and KNOWS_OF, half for COLLEAGUE: the
   tie changes how long time together counts, never adds points by itself.

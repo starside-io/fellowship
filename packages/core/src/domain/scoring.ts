@@ -3,7 +3,8 @@
 // contribution = effectiveSentiment * weight * length * kind * routine * decay
 //   length  = 1 + log2(durationDays)        a weekend 2x, two weeks 4.8x
 //   kind    = 0.25 for WORK, else 1         a meeting is contact, not a bond
-//   routine = 1 for the first 3 occasions in 30 days, then (3 / n)^2
+//   routine = for work occasions, and everything with a colleague: 1 for the
+//             first 3 in 30 days, then (3 / n)^2. Everyone else counts in full.
 //   decay   = 0.5 ^ (daysSinceItEnded / (halfLifeDays * tieFade))
 // score = clamp(round(scoreScale * sum(contribution)), -100, 100)
 
@@ -24,7 +25,7 @@ export const SCORE_MAX = 100;
  * Bumped whenever the formula changes, so a host can tell its cached scores
  * were computed by an older one and rebuild them.
  */
-export const SCORING_VERSION = 2;
+export const SCORING_VERSION = 3;
 
 /**
  * How slowly closeness fades, as a multiple of the configured half life.
@@ -47,6 +48,15 @@ export const TIE_FADE: Record<TieType, number> = {
 
 /** Work occasions count a quarter: seeing someone at work is contact, not closeness. */
 export const WORK_FACTOR = 0.25;
+
+/**
+ * Routine is what seeing someone because you have to looks like: work, and a
+ * colleague. Only that levels off. Seeing a partner or a friend every few days
+ * is the closeness itself, so it counts in full however often it happens.
+ */
+export function isRoutine(tie: TieType, type: string | undefined): boolean {
+  return tie === "COLLEAGUE" || type === "WORK";
+}
 
 /** Occasions within this many days of each other count as one routine. */
 export const ROUTINE_WINDOW_DAYS = 30;
@@ -154,12 +164,17 @@ export function computePairScore(
   const ordered = [...events].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
   const windowMs = ROUTINE_WINDOW_DAYS * MS_PER_DAY;
 
+  // Only routine occasions count toward the window, and only they level off.
+  const routine: number[] = [];
   let sum = 0;
-  let start = 0;
-  ordered.forEach((event, index) => {
-    // The occasions with this person in the window that ends at this one.
-    while (event.occurredAt.getTime() - ordered[start]!.occurredAt.getTime() >= windowMs) start += 1;
-    const nth = index - start + 1;
+  ordered.forEach((event) => {
+    let nth = 1;
+    if (isRoutine(tie, event.type)) {
+      const at = event.occurredAt.getTime();
+      while (routine.length > 0 && at - routine[0]! >= windowMs) routine.shift();
+      routine.push(at);
+      nth = routine.length;
+    }
 
     const effective = pairEffectiveSentiment(event.sentiment, event.overrideA, event.overrideB);
     const kind = event.type === "WORK" ? WORK_FACTOR : 1;

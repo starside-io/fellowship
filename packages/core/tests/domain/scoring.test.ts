@@ -9,6 +9,7 @@ import {
   endOf,
   lengthFactor,
   pairEffectiveSentiment,
+  isRoutine,
   routineFactor,
   scoreFromContributionSum,
   tieHalfLife,
@@ -308,17 +309,38 @@ describe("time together, the kind of tie, and routine", () => {
     expect(meeting).toBe(2);
   });
 
-  it("levels routine off: twenty lunches in a month count about like five", () => {
+  it("levels routine off with a colleague: twenty lunches in a month count about like five", () => {
     const lunches = (count: number) =>
       Array.from({ length: count }, (_, index) => visit(1 + index, { weight: 1, sentiment: 1 }));
-    const twenty = computePairScore(lunches(20), NOW);
-    const five = computePairScore(lunches(5), NOW);
-    const three = computePairScore(lunches(3), NOW);
+    const twenty = computePairScore(lunches(20), NOW, undefined, "COLLEAGUE");
+    const five = computePairScore(lunches(5), NOW, undefined, "COLLEAGUE");
+    const three = computePairScore(lunches(3), NOW, undefined, "COLLEAGUE");
     expect(routineFactor(3)).toBe(1);
     expect(routineFactor(6)).toBeCloseTo(0.25, 5);
     expect(three).toBe(15);
     expect(twenty).toBeLessThan(three * 2);
     expect(Math.abs(twenty - five)).toBeLessThanOrEqual(10);
+  });
+
+  it("counts a partner or a friend seen every few days in full", () => {
+    const evenings = Array.from({ length: 20 }, (_, index) =>
+      visit(1 + index, { weight: 1, sentiment: 1 }),
+    );
+    // Twenty good evenings in a month is near the top, whatever the tie.
+    expect(computePairScore(evenings, NOW, undefined, "PARTNER")).toBeGreaterThanOrEqual(90);
+    expect(computePairScore(evenings, NOW, undefined, "ACQUAINTANCE")).toBeGreaterThanOrEqual(90);
+    expect(isRoutine("PARTNER", "MEAL")).toBe(false);
+    expect(isRoutine("FRIEND", "WORK")).toBe(true);
+    expect(isRoutine("COLLEAGUE", "MEAL")).toBe(true);
+  });
+
+  it("levels off work occasions even with a friend, and only those", () => {
+    const days = (count: number, type: string) =>
+      Array.from({ length: count }, (_, index) => visit(1 + index, { weight: 1, sentiment: 1, type }));
+    const meetings = computePairScore(days(20, "WORK"), NOW, undefined, "FRIEND");
+    const dinners = computePairScore(days(20, "MEAL"), NOW, undefined, "FRIEND");
+    expect(meetings).toBeLessThan(10);
+    expect(dinners).toBeGreaterThanOrEqual(90);
   });
 
   it("scores the worked example: two weeks home and a weekend in Lyon, as family", () => {
